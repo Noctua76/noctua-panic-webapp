@@ -51,9 +51,10 @@
       justify-content:space-between;
       padding:10px 14px;
       border-radius:999px;
-      background:rgba(5,7,15,.88);
-      border:1px solid rgba(255,255,255,.04);
-      backdrop-filter:blur(16px);
+      background:rgba(3,4,15,.92);
+      border:1px solid rgba(255,255,255,.06);
+      backdrop-filter:blur(18px);
+      box-shadow:0 18px 40px rgba(0,0,0,.85);
     }
 
     .header-left{
@@ -83,41 +84,62 @@
 
     .header-text span{
       font-size:11px;
-      text-transform:uppercase;
-      letter-spacing:.14em;
       color:var(--muted);
+      letter-spacing:.05em;
+      text-transform:uppercase;
     }
 
     .header-text strong{
       font-size:14px;
-      letter-spacing:.06em;
+      letter-spacing:.04em;
     }
 
     .header-right{
       display:flex;
       flex-direction:column;
       align-items:flex-end;
-      gap:4px;
+      gap:3px;
     }
 
     .status-pill{
       display:inline-flex;
       align-items:center;
       gap:6px;
-      font-size:11px;
-      padding:4px 9px;
+      padding:4px 10px;
       border-radius:999px;
-      background:rgba(16,204,129,.14);
-      color:#a5f3c7;
-      border:1px solid rgba(16,204,129,.5);
+      font-size:11px;
+      font-weight:500;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.02);
+      color:var(--muted);
     }
 
     .status-dot{
       width:7px;
       height:7px;
       border-radius:50%;
-      background:#22f29a;
-      box-shadow:0 0 8px rgba(34,242,154,.9);
+    }
+
+    /* ONLINE */
+    .status-pill.online{
+      background:rgba(18,212,124,.14);
+      border-color:rgba(18,212,124,.55);
+      color:#9ff4c6;
+    }
+    .status-pill.online .status-dot{
+      background:#2cf598;
+      box-shadow:0 0 8px rgba(44,245,152,.85);
+    }
+
+    /* OFFLINE */
+    .status-pill.offline{
+      background:rgba(255,82,82,.12);
+      border-color:rgba(255,82,82,.7);
+      color:#ffb3b3;
+    }
+    .status-pill.offline .status-dot{
+      background:#ff5252;
+      box-shadow:0 0 8px rgba(255,82,82,.9);
     }
 
     .header-time{
@@ -188,7 +210,6 @@
       color:var(--muted);
     }
 
-    /* Circle ALERT button */
     .alert-btn{
       width:150px;
       height:150px;
@@ -211,6 +232,7 @@
       letter-spacing:.18em;
       font-size:14px;
       overflow:hidden;
+      transition:transform .08s ease-out, box-shadow .08s ease-out;
     }
 
     .alert-btn::before{
@@ -223,11 +245,21 @@
     }
 
     .alert-btn:active{
-      transform:scale(.97);
+      transform:scale(.96) translateY(1px);
       box-shadow:
-        0 0 0 1px rgba(255,255,255,.18),
-        0 0 24px rgba(255,75,75,.85),
-        0 18px 30px rgba(0,0,0,.9);
+        0 0 0 1px rgba(255,255,255,.2),
+        0 0 26px rgba(255,75,75,.85),
+        0 18px 28px rgba(0,0,0,.9);
+    }
+
+    @keyframes alertPulse{
+      0%{ box-shadow:0 0 0 0 rgba(255,75,75,.65); }
+      70%{ box-shadow:0 0 0 14px rgba(255,75,75,0); }
+      100%{ box-shadow:0 0 0 0 rgba(255,75,75,0); }
+    }
+
+    .alert-panel.ready .alert-btn{
+      animation:alertPulse 2.4s infinite;
     }
 
     .alert-note{
@@ -238,16 +270,16 @@
 
     /* ========== STATUS CARD ========== */
     .status-card{
-      margin-top:6px;
+      margin-top:10px;
       border-radius:var(--radius);
       background:var(--card);
-      border:1px solid rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.06);
       padding:12px 14px;
       font-size:13px;
       display:flex;
       flex-direction:column;
       gap:8px;
-      box-shadow:0 16px 40px rgba(0,0,0,.85);
+      box-shadow:0 16px 40px rgba(0,0,0,.9);
     }
 
     .status-header{
@@ -299,7 +331,7 @@
     .status-section{
       margin-top:8px;
       padding-top:8px;
-      border-top:1px solid rgba(255,255,255,.05);
+      border-top:1px solid rgba(255,255,255,.06);
     }
 
     .status-section-title{
@@ -314,7 +346,7 @@
       list-style:none;
       display:flex;
       flex-direction:column;
-      gap:3px;
+      gap:4px;
     }
 
     .status-list li{
@@ -332,6 +364,24 @@
       background:rgba(255,255,255,.03);
       border:1px solid rgba(255,255,255,.12);
       color:var(--muted);
+    }
+
+    .status-pill-small.pending{
+      background:rgba(255,193,7,.08);
+      border-color:rgba(255,193,7,.6);
+      color:#ffecb3;
+    }
+
+    .status-pill-small.ok{
+      background:rgba(18,212,124,.12);
+      border-color:rgba(18,212,124,.6);
+      color:#a5f3c7;
+    }
+
+    .status-pill-small.failed{
+      background:rgba(255,82,82,.12);
+      border-color:rgba(255,82,82,.7);
+      color:#ffc1c1;
     }
 
     /* ========== Modal ========== */
@@ -434,13 +484,11 @@
         </div>
       </div>
       <div class="header-right">
-        <div class="status-pill">
+        <div class="status-pill online" id="systemStatus">
           <span class="status-dot"></span>
-          <span>Online</span>
+          <span class="status-label">Online</span>
         </div>
-        <div class="header-time" id="headerClock">
-  --
-</div>
+        <div class="header-time" id="headerClock">--:--</div>
       </div>
     </header>
 
@@ -451,7 +499,7 @@
       </p>
 
       <!-- Alert panel -->
-      <section class="alert-panel">
+      <section class="alert-panel ready">
         <div class="alert-label">
           <span>Panic Mode</span>
           <strong>ALERT</strong>
@@ -487,15 +535,15 @@
           <ul class="status-list">
             <li>
               <span>Αριθμός 1</span>
-              <span class="status-pill-small">Καλείται…</span>
+              <span class="status-pill-small pending">Καλείται…</span>
             </li>
             <li>
               <span>Αριθμός 2</span>
-              <span class="status-pill-small">Σε ουρά…</span>
+              <span class="status-pill-small pending">Σε ουρά…</span>
             </li>
             <li>
               <span>Αριθμός 3</span>
-              <span class="status-pill-small">Απαντήθηκε 14:33</span>
+              <span class="status-pill-small ok">Απαντήθηκε 14:33</span>
             </li>
           </ul>
         </div>
@@ -505,15 +553,15 @@
           <ul class="status-list">
             <li>
               <span>SMS 1</span>
-              <span class="status-pill-small">Παραδόθηκε ✔️</span>
+              <span class="status-pill-small ok">Παραδόθηκε ✔️</span>
             </li>
             <li>
               <span>SMS 2</span>
-              <span class="status-pill-small">Σε αναμονή…</span>
+              <span class="status-pill-small pending">Σε αναμονή…</span>
             </li>
             <li>
               <span>SMS 3</span>
-              <span class="status-pill-small">Παραδόθηκε ✔️</span>
+              <span class="status-pill-small ok">Παραδόθηκε ✔️</span>
             </li>
           </ul>
         </div>
@@ -559,6 +607,7 @@
     let activeTimer    = null;
     let startTimestamp = null;
 
+    // ===== 1. Πάτημα ALERT → ανοίγει modal =====
     if (alertBtn) {
       alertBtn.addEventListener('click', () => {
         openConfirmModal();
@@ -673,69 +722,60 @@
         throw new Error('Alert request failed with status ' + response.status);
       }
     }
-    /* ===== LIVE CLOCK (Header) ===== */
-function updateHeaderClock(){
-  const clockEl = document.getElementById('headerClock');
-  if (!clockEl) return;
 
-  const now = new Date();
-  clockEl.textContent = now.toLocaleTimeString('el-GR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
+    // ===== LIVE CLOCK (Header) =====
+    function updateHeaderClock(){
+      const clockEl = document.getElementById('headerClock');
+      if (!clockEl) return;
 
-updateHeaderClock();
-setInterval(updateHeaderClock, 1000);
+      const now = new Date();
+      clockEl.textContent = now.toLocaleTimeString('el-GR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
 
+    updateHeaderClock();
+    setInterval(updateHeaderClock, 1000);
 
-/* ===== SYSTEM STATUS CHECK (Online / Offline) ===== */
-const statusEl      = document.getElementById('systemStatus');
-const statusLabelEl = statusEl?.querySelector('.status-label');
-const statusTimeEl  = document.getElementById('statusCheckedAt');
+    // ===== SYSTEM STATUS CHECK (Online / Offline) =====
+    const statusEl      = document.getElementById('systemStatus');
+    const statusLabelEl = statusEl?.querySelector('.status-label');
+    const HEALTH_ENDPOINT = 'https://YOUR-BACKEND-URL/api/health';
 
-const HEALTH_ENDPOINT = 'https://YOUR-BACKEND-URL/api/health';
+    function setSystemStatus(mode){
+      if (!statusEl || !statusLabelEl) return;
 
-function setSystemStatus(mode){
-  if (!statusEl || !statusLabelEl || !statusTimeEl) return;
+      statusEl.classList.remove('online','offline');
 
-  statusEl.classList.remove('online','offline');
+      if (mode === 'online'){
+        statusEl.classList.add('online');
+        statusLabelEl.textContent = 'Online';
+      } else {
+        statusEl.classList.add('offline');
+        statusLabelEl.textContent = 'Offline';
+      }
+    }
 
-  if (mode === 'online'){
-    statusEl.classList.add('online');
-    statusLabelEl.textContent = 'Online';
-  } else {
-    statusEl.classList.add('offline');
-    statusLabelEl.textContent = 'Offline';
-  }
+    async function checkSystemStatus(){
+      try{
+        // Όταν θα υπάρχει backend:
+        // const res  = await fetch(HEALTH_ENDPOINT, { cache:'no-store' });
+        // const data = await res.json();
+        // if (data.status === 'ok') setSystemStatus('online');
+        // else setSystemStatus('offline');
 
-  const now = new Date();
-  statusTimeEl.textContent = now.toLocaleTimeString('el-GR', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
+        // DEMO MODE – προς το παρόν πάντα Online
+        setSystemStatus('online');
 
-async function checkSystemStatus(){
-  try{
-    // Όταν θα υπάρχει backend ξεσχολίασε:
-    // const res  = await fetch(HEALTH_ENDPOINT, { cache:'no-store' });
-    // const data = await res.json();
-    // if (data.status === 'ok') setSystemStatus('online');
-    // else setSystemStatus('offline');
+      }catch(err){
+        console.error('Health check failed:', err);
+        setSystemStatus('offline');
+      }
+    }
 
-    // 🔧 DEMO MODE
-    setSystemStatus('online');
-
-  }catch(err){
-    console.error('Health check failed:', err);
-    setSystemStatus('offline');
-  }
-}
-
-checkSystemStatus();
-// setInterval(checkSystemStatus, 30000); // αν θες επανάληψη κάθε 30”
-
+    checkSystemStatus();
+    // setInterval(checkSystemStatus, 30000); // προαιρετικά επανάληψη κάθε 30”
   </script>
 </body>
 </html>
