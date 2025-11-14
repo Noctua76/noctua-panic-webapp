@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Noctua Panic Web App</title>
+  <style>
+    :root{
+      --bg:#05060a;
+      --bg-soft:#11131a;
+      --card:#151822;
+      --accent:#e53935;
+      --accent-soft:#ff6f61;
+      --text:#f5f5fa;
+      --muted:#a0a3b5;
+      --border:#262a36;
+      --radius:18px;
+      --shadow:0 18px 40px rgba(0,0,0,.55);
+      --max-width:480px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{
+      height:100%;
+      background:radial-gradient(circle at top,#1b2135,#05060a 60%);
+      color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    body{
+      display:flex;
+      justify-content:center;
+      align-items:stretch;
+    }
+
+    .app{
+      width:100%;
+      max-width:var(--max-width);
+      min-height:100vh;
+      padding:12px 12px 16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    /* ========== Header ========== */
+    .app-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 14px;
+      border-radius:var(--radius);
+      background:linear-gradient(135deg,rgba(21,24,34,.9),rgba(7,8,15,.95));
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,.04);
+    }
+
+    .header-left{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .logo{
+      width:28px;
+      height:28px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:radial-gradient(circle at 30% 0%,#ffd27f,#b388ff 45%,#1b2135 80%);
+      font-size:18px;
+    }
+
+    .header-title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+
+    .header-title span:first-child{
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:var(--muted);
+    }
+
+    .header-title strong{
+      font-size:15px;
+      letter-spacing:.03em;
+    }
+
+    .header-right{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:4px;
+    }
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      background:rgba(18,212,124,.12);
+      color:#9ff4c6;
+      border:1px solid rgba(18,212,124,.4);
+    }
+
+    .status-dot{
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background:#2cf598;
+      box-shadow:0 0 8px rgba(44,245,152,.8);
+    }
+
+    .header-time{
+      font-size:11px;
+      color:var(--muted);
+    }
+
+    /* ========== Info banner ========== */
+    .info-banner{
+      padding:10px 12px;
+      border-radius:var(--radius);
+      background:rgba(12,14,22,.9);
+      border:1px dashed rgba(255,255,255,.14);
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .info-banner strong{
+      color:var(--text);
+    }
+
+    /* ========== Main content ========== */
+    .app-main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      margin-top:4px;
+    }
+
+    .alert-card{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .alert-btn{
+      width:100%;
+      max-width:360px;
+      min-height:130px;
+      border-radius:26px;
+      border:none;
+      cursor:pointer;
+      background:
+        radial-gradient(circle at 20% 0%,rgba(255,255,255,.16),transparent 55%),
+        linear-gradient(145deg,var(--accent),var(--accent-soft));
+      box-shadow:
+        0 0 25px rgba(229,57,53,.55),
+        0 18px 40px rgba(0,0,0,.8);
+      color:#fff;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      text-align:center;
+      padding:18px 16px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .alert-btn::before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background:radial-gradient(circle at 50% 0%,rgba(255,255,255,.18),transparent 55%);
+      opacity:.28;
+      pointer-events:none;
+    }
+
+    .alert-label-main{
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+    }
+
+    .alert-label-sub{
+      font-size:13px;
+      opacity:.9;
+    }
+
+    .alert-icon{
+      font-size:28px;
+    }
+
+    .alert-hint{
+      font-size:11px;
+      opacity:.9;
+    }
+
+    /* ========== Status card ========== */
+    .status-card{
+      border-radius:var(--radius);
+      background:var(--card);
+      border:1px solid var(--border);
+      padding:12px 13px;
+      box-shadow:0 12px 30px rgba(0,0,0,.65);
+      font-size:13px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .status-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .status-title{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      color:var(--muted);
+    }
+
+    .status-badge{
+      font-size:11px;
+      padding:3px 8px;
+      border-radius:999px;
+      background:rgba(244,183,77,.1);
+      color:#ffdd9b;
+      border:1px solid rgba(244,183,77,.4);
+    }
+
+    .status-row{
+      margin-top:4px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      color:var(--muted);
+    }
+
+    .status-row strong{
+      font-size:13px;
+      color:var(--text);
+    }
+
+    .status-section{
+      margin-top:8px;
+      padding-top:8px;
+      border-top:1px solid rgba(255,255,255,.04);
+    }
+
+    .status-section-title{
+      font-size:12px;
+      color:var(--muted);
+      margin-bottom:4px;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+
+    .status-list{
+      list-style:none;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
+
+    .status-list li{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:13px;
+      color:var(--text);
+    }
+
+    .status-pill-small{
+      font-size:11px;
+      padding:2px 6px;
+      border-radius:999px;
+      background:rgba(255,255,255,.02);
+      color:var(--muted);
+      border:1px solid rgba(255,255,255,.1);
+    }
+
+    /* ========== Modal (Confirm) ========== */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.75);
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      z-index:30;
+    }
+
+    .modal{
+      width:100%;
+      max-width:360px;
+      margin:0 16px;
+      border-radius:22px;
+      background:linear-gradient(145deg,#181b26,#0b0d13);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 22px 45px rgba(0,0,0,.85);
+      padding:18px 18px 14px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      text-align:center;
+    }
+
+    .modal-icon{
+      font-size:26px;
+    }
+
+    .modal-title{
+      font-size:16px;
+      font-weight:600;
+    }
+
+    .modal-text{
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .modal-countdown{
+      font-size:22px;
+      font-weight:700;
+      letter-spacing:.12em;
+      margin-top:4px;
+    }
+
+    .modal-actions{
+      margin-top:8px;
+      display:flex;
+      gap:10px;
+    }
+
+    .btn{
+      flex:1;
+      font-size:13px;
+      padding:10px 8px;
+      border-radius:999px;
+      border:none;
+      cursor:pointer;
+    }
+
+    .btn-secondary{
+      background:rgba(255,255,255,.04);
+      color:var(--muted);
+      border:1px solid rgba(255,255,255,.12);
+    }
+
+    .btn-primary{
+      background:linear-gradient(135deg,var(--accent),var(--accent-soft));
+      color:#fff;
+      box-shadow:0 0 16px rgba(229,57,53,.65);
+    }
+
+    /* ========== Footer ========== */
+    .app-footer{
+      margin-top:4px;
+      padding-top:6px;
+      border-top:1px solid rgba(255,255,255,.06);
+      font-size:11px;
+      color:var(--muted);
+      text-align:center;
+    }
+
+    .hidden{display:none !important;}
+
+    @media (min-width:600px){
+      .app{padding-top:18px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo">🦉</div>
+        <div class="header-title">
+          <span>Noctua AI Systems</span>
+          <strong>Panic Web App</strong>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="status-pill">
+          <span class="status-dot"></span>
+          <span>Online</span>
+        </div>
+        <div class="header-time">14:32</div>
+      </div>
+    </header>
+
+    <!-- Info banner -->
+    <section class="info-banner">
+      <strong>Οδηγία:</strong> Σε περίπτωση πραγματικής απειλής πατήστε το κουμπί <strong>ALERT</strong>. 
+      Οι κλήσεις και τα SMS θα γίνουν αυτόματα.
+    </section>
+
+    <!-- Main -->
+    <main class="app-main">
+      <!-- Alert button -->
+      <section class="alert-card">
+        <button class="alert-btn" type="button">
+          <div class="alert-icon">🔴</div>
+          <div class="alert-label-main">ALERT</div>
+          <div class="alert-label-sub">ΕΝΕΡΓΟΠΟΙΗΣΗ ΣΥΝΑΓΕΡΜΟΥ</div>
+          <div class="alert-hint">Πατήστε μία φορά σε περίπτωση εισβολής</div>
+        </button>
+      </section>
+
+      <!-- Status card (default hidden) -->
+      <section class="status-card hidden">
+        <div class="status-header">
+          <div class="status-title">
+            <span>🔔</span>
+            <span>Συναγερμός ενεργός</span>
+          </div>
+          <div class="status-badge">Live ειδοποίηση</div>
+        </div>
+
+        <div class="status-row">
+          <span>Χρόνος από ενεργοποίηση</span>
+          <strong>00:07</strong>
+        </div>
+
+        <div class="status-section">
+          <div class="status-section-title">📞 Κλήσεις</div>
+          <ul class="status-list">
+            <li>
+              <span>Αριθμός 1</span>
+              <span class="status-pill-small">Καλείται…</span>
+            </li>
+            <li>
+              <span>Αριθμός 2</span>
+              <span class="status-pill-small">Καλείται…</span>
+            </li>
+            <li>
+              <span>Αριθμός 3</span>
+              <span class="status-pill-small">Απαντήθηκε 14:33</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="status-section">
+          <div class="status-section-title">📩 SMS</div>
+          <ul class="status-list">
+            <li>
+              <span>SMS 1</span>
+              <span class="status-pill-small">Παραδόθηκε ✔️</span>
+            </li>
+            <li>
+              <span>SMS 2</span>
+              <span class="status-pill-small">Σε αναμονή…</span>
+            </li>
+            <li>
+              <span>SMS 3</span>
+              <span class="status-pill-small">Παραδόθηκε ✔️</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      © Noctua AI Systems – AI Incident Alert για Security
+    </footer>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-icon">⚠️</div>
+      <div class="modal-title">Επιβεβαίωση συναγερμού</div>
+      <div class="modal-text">
+        Η ειδοποίηση θα σταλεί στα προκαθορισμένα τηλέφωνα και SMS.
+      </div>
+      <div class="modal-countdown">5…</div>
+      <div class="modal-text">
+        Πατήστε <strong>Επιβεβαίωση</strong> μόνο σε περίπτωση πραγματικής απειλής.
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" type="button">Ακύρωση</button>
+        <button class="btn btn-primary" type="button">Επιβεβαίωση</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+
+    const alertBtn        = $('.alert-btn');
+    const statusCard      = $('.status-card');
+    const modalBackdrop   = $('.modal-backdrop');
+    const countdownEl     = $('.modal-countdown');
+    const statusBadge     = document.querySelector('.status-badge');
+    const timeFromStartEl = document.querySelector('.status-row strong');
+
+    let countdownTimer = null;
+    let activeTimer    = null;
+    let startTimestamp = null;
+
+    if (alertBtn) {
+      alertBtn.addEventListener('click', () => {
+        openConfirmModal();
+      });
+    }
+
+    function openConfirmModal() {
+      if (!modalBackdrop) return;
+      modalBackdrop.classList.remove('hidden');
+      startCountdown(5);
+      attachModalHandlers();
+    }
+
+    function closeConfirmModal() {
+      if (!modalBackdrop) return;
+      modalBackdrop.classList.add('hidden');
+      stopCountdown();
+    }
+
+    function attachModalHandlers() {
+      const cancelButton  = document.querySelector('.btn.btn-secondary');
+      const confirmButton = document.querySelector('.btn.btn-primary');
+
+      if (cancelButton) {
+        cancelButton.onclick = () => {
+          closeConfirmModal();
+        };
+      }
+
+      if (confirmButton) {
+        confirmButton.onclick = async () => {
+          closeConfirmModal();
+          await handleAlertConfirmed();
+        };
+      }
+    }
+
+    function startCountdown(seconds) {
+      if (!countdownEl) return;
+      let remaining = seconds;
+      countdownEl.textContent = `${remaining}…`;
+
+      countdownTimer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          stopCountdown();
+        } else {
+          countdownEl.textContent = `${remaining}…`;
+        }
+      }, 1000);
+    }
+
+    function stopCountdown() {
+      if (countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+    }
+
+    async function handleAlertConfirmed() {
+      if (statusCard) {
+        statusCard.classList.remove('hidden');
+      }
+
+      startTimestamp = Date.now();
+      startActiveTimer();
+
+      if (statusBadge) {
+        statusBadge.textContent = 'Ειδοποίηση σε εξέλιξη';
+      }
+
+      try {
+        await triggerAlert();
+      } catch (err) {
+        console.error('Σφάλμα κατά την ενεργοποίηση:', err);
+        if (statusBadge) {
+          statusBadge.textContent = 'Σφάλμα – απαιτείται έλεγχος';
+        }
+      }
+    }
+
+    function startActiveTimer() {
+      if (!timeFromStartEl) return;
+
+      activeTimer = setInterval(() => {
+        if (!startTimestamp) return;
+        const diffMs   = Date.now() - startTimestamp;
+        const totalSec = Math.floor(diffMs / 1000);
+        const mm       = String(Math.floor(totalSec / 60)).padStart(2, '0');
+        const ss       = String(totalSec % 60).padStart(2, '0');
+        timeFromStartEl.textContent = `${mm}:${ss}`;
+      }, 1000);
+    }
+
+    async function triggerAlert() {
+      const endpoint = 'https://YOUR-BACKEND-URL/api/trigger-alert';
+
+      const payload = {
+        siteId:      'SITE_123',
+        guardId:     'GUARD_001',
+        source:      'noctua-panic-webapp',
+        triggeredAt: new Date().toISOString()
+      };
+
+      const response = await fetch(endpoint, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Alert request failed with status ' + response.status);
+      }
+
+      // const data = await response.json();
+      // updateStatusFromServer(data);
+    }
+  </script>
+</body>
+</html>
