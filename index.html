@@ -673,8 +673,7 @@
         throw new Error('Alert request failed with status ' + response.status);
       }
     }
-  </script>
-  /* ===== LIVE CLOCK (Header) ===== */
+    /* ===== LIVE CLOCK (Header) ===== */
 function updateHeaderClock(){
   const clockEl = document.getElementById('headerClock');
   if (!clockEl) return;
@@ -737,5 +736,6 @@ async function checkSystemStatus(){
 checkSystemStatus();
 // setInterval(checkSystemStatus, 30000); // αν θες επανάληψη κάθε 30”
 
+  </script>
 </body>
 </html>
