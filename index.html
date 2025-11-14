@@ -456,6 +456,30 @@
       color:#fff;
       box-shadow:0 0 18px rgba(255,75,75,.8);
     }
+    /* === False Activation Message (auto-cancel) === */
+.false-alarm-msg {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(255, 90, 90, 0.15);
+  backdrop-filter: blur(6px);
+  padding: 14px 22px;
+  border-radius: 14px;
+  color: #ff7a7a;
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0;
+  transition: all 0.35s ease;
+  border: 1px solid rgba(255, 70, 70, 0.3);
+  z-index: 40;
+}
+
+.false-alarm-msg.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 
     /* ========== Footer ========== */
     .app-footer{
@@ -606,6 +630,8 @@
     let countdownTimer = null;
     let activeTimer    = null;
     let startTimestamp = null;
+    let autoCancelTimeout = null;
+
 
     // ===== 1. Πάτημα ALERT → ανοίγει modal =====
     if (alertBtn) {
@@ -615,34 +641,44 @@
     }
 
     function openConfirmModal() {
-      if (!modalBackdrop) return;
-      modalBackdrop.classList.remove('hidden');
-      startCountdown(5);
-      attachModalHandlers();
-    }
+  if (!modalBackdrop) return;
+  modalBackdrop.classList.remove('hidden');
+
+  startCountdown(5);            // ξεκινά το countdown
+  startAutoCancelCountdown();   // αν δεν πατηθεί τίποτα → auto-cancel
+
+  attachModalHandlers();
+}
+
 
     function closeConfirmModal() {
-      if (!modalBackdrop) return;
-      modalBackdrop.classList.add('hidden');
-      stopCountdown();
-    }
+  if (!modalBackdrop) return;
+  modalBackdrop.classList.add('hidden');
+
+  cancelAutoCancelCountdown();  // σταματά το auto-cancel αν τρέχει
+  stopCountdown();              // σταματά το ρολόι στο modal
+}
+
 
     function attachModalHandlers() {
       const cancelButton  = document.querySelector('.btn.btn-secondary');
       const confirmButton = document.querySelector('.btn.btn-primary');
 
       if (cancelButton) {
-        cancelButton.onclick = () => {
-          closeConfirmModal();
-        };
-      }
+  cancelButton.onclick = () => {
+    cancelAutoCancelCountdown();  // ο χρήστης πάτησε Άκυρο
+    closeConfirmModal();
+  };
+}
 
-      if (confirmButton) {
-        confirmButton.onclick = async () => {
-          closeConfirmModal();
-          await handleAlertConfirmed();
-        };
-      }
+if (confirmButton) {
+  confirmButton.onclick = async () => {
+    cancelAutoCancelCountdown();  // ο χρήστης πήρε απόφαση
+    closeConfirmModal();
+    await handleAlertConfirmed();
+  };
+}
+
     }
 
     function startCountdown(seconds) {
@@ -776,6 +812,61 @@
 
     checkSystemStatus();
     // setInterval(checkSystemStatus, 30000); // προαιρετικά επανάληψη κάθε 30”
+    /* ==========================================
+   AUTO-CANCEL AFTER COUNTDOWN (NO ACTION)
+========================================== */
+
+function startAutoCancelCountdown() {
+  // καθάρισε τυχόν προηγούμενο timeout
+  if (autoCancelTimeout) {
+    clearTimeout(autoCancelTimeout);
+    autoCancelTimeout = null;
+  }
+
+  // Περίπου όσο κρατάει το countdown (5 δευτερόλεπτα)
+  autoCancelTimeout = setTimeout(() => {
+    autoCancelTimeout = null;
+
+    // Αν το modal είναι ακόμα ανοιχτό και δεν έχει γίνει κίνηση:
+    if (!modalBackdrop.classList.contains('hidden')) {
+      closeConfirmModal();      // θα καλέσει και stopCountdown()
+      showFalseAlarmMessage();  // μήνυμα "εσφαλμένη ενεργοποίηση"
+      // εδώ στο μέλλον μπορείς να καλέσεις backend για logging
+      // π.χ. logFalseTrigger();
+    }
+  }, 5500); // 5.5s για λίγο “μαξιλάρι”
+}
+
+function cancelAutoCancelCountdown() {
+  if (autoCancelTimeout) {
+    clearTimeout(autoCancelTimeout);
+    autoCancelTimeout = null;
+  }
+}
+
+/* ==========================================
+   Μήνυμα "Εσφαλμένη ενεργοποίηση καταγράφηκε"
+========================================== */
+
+function showFalseAlarmMessage() {
+  const msg = document.createElement('div');
+  msg.className = 'false-alarm-msg';
+  msg.textContent = '⚠️ Εσφαλμένη ενεργοποίηση καταγράφηκε';
+
+  document.body.appendChild(msg);
+
+  // μικρή καθυστέρηση για smooth transition
+  setTimeout(() => {
+    msg.classList.add('show');
+  }, 50);
+
+  // μετά από 2s εξαφανίζεται
+  setTimeout(() => {
+    msg.classList.remove('show');
+    setTimeout(() => msg.remove(), 400);
+  }, 2000);
+}
+
   </script>
 </body>
 </html>
