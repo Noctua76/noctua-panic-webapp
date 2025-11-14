@@ -438,7 +438,9 @@
           <span class="status-dot"></span>
           <span>Online</span>
         </div>
-        <div class="header-time">14:32</div>
+        <div class="header-time" id="headerClock">
+  --
+</div>
       </div>
     </header>
 
@@ -672,5 +674,68 @@
       }
     }
   </script>
+  /* ===== LIVE CLOCK (Header) ===== */
+function updateHeaderClock(){
+  const clockEl = document.getElementById('headerClock');
+  if (!clockEl) return;
+
+  const now = new Date();
+  clockEl.textContent = now.toLocaleTimeString('el-GR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+updateHeaderClock();
+setInterval(updateHeaderClock, 1000);
+
+
+/* ===== SYSTEM STATUS CHECK (Online / Offline) ===== */
+const statusEl      = document.getElementById('systemStatus');
+const statusLabelEl = statusEl?.querySelector('.status-label');
+const statusTimeEl  = document.getElementById('statusCheckedAt');
+
+const HEALTH_ENDPOINT = 'https://YOUR-BACKEND-URL/api/health';
+
+function setSystemStatus(mode){
+  if (!statusEl || !statusLabelEl || !statusTimeEl) return;
+
+  statusEl.classList.remove('online','offline');
+
+  if (mode === 'online'){
+    statusEl.classList.add('online');
+    statusLabelEl.textContent = 'Online';
+  } else {
+    statusEl.classList.add('offline');
+    statusLabelEl.textContent = 'Offline';
+  }
+
+  const now = new Date();
+  statusTimeEl.textContent = now.toLocaleTimeString('el-GR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+async function checkSystemStatus(){
+  try{
+    // Όταν θα υπάρχει backend ξεσχολίασε:
+    // const res  = await fetch(HEALTH_ENDPOINT, { cache:'no-store' });
+    // const data = await res.json();
+    // if (data.status === 'ok') setSystemStatus('online');
+    // else setSystemStatus('offline');
+
+    // 🔧 DEMO MODE
+    setSystemStatus('online');
+
+  }catch(err){
+    console.error('Health check failed:', err);
+    setSystemStatus('offline');
+  }
+}
+
+checkSystemStatus();
+// setInterval(checkSystemStatus, 30000); // αν θες επανάληψη κάθε 30”
+
 </body>
 </html>
