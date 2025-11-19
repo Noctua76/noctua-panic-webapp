@@ -745,7 +745,7 @@ if (confirmButton) {
     }
 
     async function triggerAlert() {
-      const endpoint = 'https://YOUR-BACKEND-URL/api/trigger-alert';
+      const BACKEND_BASE = 'http://localhost:5000';
 
       const payload = {
         siteId:      'SITE_123',
@@ -817,7 +817,7 @@ if (confirmButton) {
     // ===== SYSTEM STATUS CHECK (Online / Offline) =====
     const statusEl      = document.getElementById('systemStatus');
     const statusLabelEl = statusEl?.querySelector('.status-label');
-    const HEALTH_ENDPOINT = 'https://YOUR-BACKEND-URL/api/health';
+    const HEALTH_ENDPOINT = `${BACKEND_BASE}/health`;
 
     function setSystemStatus(mode){
       if (!statusEl || !statusLabelEl) return;
