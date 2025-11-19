@@ -715,8 +715,14 @@ if (confirmButton) {
         statusBadge.textContent = 'Ειδοποίηση σε εξέλιξη';
       }
 
-      try {
+            try {
+        // 1) Ενεργοποίηση κλήσεων / SMS (όταν θα συνδεθεί ο provider)
         await triggerAlert();
+
+        // 2) Αποστολή incident log στο backend για AI καταγραφή
+        const baseMessage = "Panic button activated via Noctua Panic Web App. Guard confirmed real incident.";
+        await sendIncidentToBackend(baseMessage);
+
       } catch (err) {
         console.error('Σφάλμα κατά την ενεργοποίηση:', err);
         if (statusBadge) {
@@ -758,6 +764,40 @@ if (confirmButton) {
         throw new Error('Alert request failed with status ' + response.status);
       }
     }
+
+        // ===== Incident log προς backend /incident-log (AI Assistant) =====
+    async function sendIncidentToBackend(message) {
+      try {
+        const payload = {
+          guardId: "GUARD_001",          // προσωρινά σταθερές τιμές
+          siteId: "SITE_123",
+          timestamp: new Date().toISOString(),
+          message: message
+        };
+
+        const response = await fetch("http://localhost:5000/incident-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          console.error("Incident-log request failed with status", response.status);
+          return;
+        }
+
+        const data = await response.json();
+        console.log("Incident-log response:", data);
+
+        // Προαιρετικά: δείξε στο guard τη σύνοψη που έφτιαξε ο Assistant
+        if (data.assistantLog) {
+          alert("AI incident summary:\n\n" + data.assistantLog);
+        }
+      } catch (err) {
+        console.error("Error sending incident log:", err);
+      }
+    }
+
 
     // ===== LIVE CLOCK (Header) =====
     function updateHeaderClock(){
