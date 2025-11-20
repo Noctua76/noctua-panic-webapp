@@ -856,6 +856,47 @@
       console.error("Error sending incident log:", err);
     }
   }
+    
+    // ===== Detailed incident log προς backend (3 answers) =====
+async function sendIncidentDetailsToBackend(answers) {
+  const endpoint = `${BACKEND_BASE}/incident-log`;
+
+  // Μπορούμε να χρησιμοποιήσουμε τα ίδια guard/site με πριν
+  const payload = {
+    guardId: "GUARD_001",
+    siteId: "SITE_123",
+    timestamp: new Date().toISOString(),
+    incidentAnswers: answers,
+    message: `
+      Incident follow-up (3-question flow).
+
+      Type of incident: ${answers.incident_type || '-'}
+      Location: ${answers.location || '-'}
+      Actions taken: ${answers.actions_taken || '-'}
+    `
+  };
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    console.error("Detailed incident-log request failed with status", response.status);
+    return;
+  }
+
+  const data = await response.json();
+  console.log("Detailed incident-log response:", data);
+
+  // Αν θες, μπορείς να εμφανίζεις τη σύνοψη του AI:
+  if (data.assistantLog) {
+    console.log("AI incident summary:", data.assistantLog);
+    // προαιρετικά:
+    // alert("AI incident summary:\n\n" + data.assistantLog);
+  }
+}
 
   // ===== LIVE CLOCK (Header) =====
   function updateHeaderClock(){
@@ -1046,15 +1087,22 @@ document.getElementById('assistant-next-btn')?.addEventListener('click', () => {
     progressEl.textContent = `Ερώτηση ${currentQuestionIndex+1} από ${incidentQuestions.length}`;
     answerEl.value = '';
   } else {
-    // Τέλος των 3 ερωτήσεων (UI only)
-    console.log('Incident answers (UI only):', incidentAnswers);
-    alert('Η καταγραφή του συμβάντος ολοκληρώθηκε.');
-    panel.classList.add('hidden');
+    // Τέλος των 3 ερωτήσεων
+    console.log('Incident answers:', incidentAnswers);
 
-    // Επιστροφή στην αρχική κατάσταση του webapp
-    resetWebAppUI();
-  }
-});
-  </script>
+    // Στέλνουμε τις απαντήσεις στο backend για AI καταγραφή
+    sendIncidentDetailsToBackend(incidentAnswers)
+      .catch(err => {
+        console.error('Σφάλμα κατά την αποστολή incident details:', err);
+      })
+      .finally(() => {
+        alert('Η καταγραφή του συμβάντος ολοκληρώθηκε.');
+        panel.classList.add('hidden');
+        resetWebAppUI();
+      });
+  }   // ← Κλείνει το if του currentQuestionIndex
+});   // ← ΚΛΕΙΝΕΙ το addEventListener
+
+</script>
 </body>
 </html>
