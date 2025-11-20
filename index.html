@@ -590,6 +590,55 @@
           </ul>
         </div>
       </section>
+      <!-- Incident Report Panel (3-step UI, initially hidden) -->
+<section id="incident-assistant" class="assistant-panel hidden" style="margin-top:20px;">
+  <h2 style="font-size:16px; margin-bottom:6px;">Καταγραφή συμβάντος</h2>
+  <p id="assistant-intro" style="font-size:13px; color:var(--muted); margin-bottom:14px;">
+    Ο συναγερμός έχει σταλεί. Απάντησε σε 3 σύντομες ερωτήσεις.
+  </p>
+
+  <div class="assistant-step" style="display:flex; flex-direction:column; gap:10px;">
+    <div id="assistant-question"
+         class="assistant-question"
+         style="font-size:14px; font-weight:500; min-height:42px;">
+      <!-- Ερώτηση φορτώνεται εδώ -->
+    </div>
+
+    <textarea id="assistant-answer"
+              rows="3"
+              placeholder="Γράψε την απάντησή σου εδώ…"
+              style="
+                width:100%;
+                padding:10px;
+                border-radius:12px;
+                background:var(--bg-soft);
+                border:1px solid rgba(255,255,255,.12);
+                color:var(--text);
+                font-size:13px;
+                resize:none;
+              "></textarea>
+
+    <div class="assistant-controls"
+         style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+      <span id="assistant-progress" style="font-size:12px; color:var(--muted);">
+        Ερώτηση 1 από 3
+      </span>
+      <button id="assistant-next-btn"
+              type="button"
+              style="
+                padding:8px 16px;
+                border-radius:999px;
+                background:linear-gradient(145deg,var(--accent),var(--accent-soft));
+                color:white;
+                border:none;
+                cursor:pointer;
+                font-size:13px;
+              ">
+        Επόμενο
+      </button>
+    </div>
+  </div>
+</section>
     </main>
 
     <!-- Footer -->
@@ -706,33 +755,38 @@
   }
 
   async function handleAlertConfirmed() {
-    if (statusCard) {
-      statusCard.classList.remove('hidden');
-    }
+  if (statusCard) {
+    statusCard.classList.remove('hidden');
+  }
 
-    startTimestamp = Date.now();
-    startActiveTimer();
+  startTimestamp = Date.now();
+  startActiveTimer();
 
+  if (statusBadge) {
+    statusBadge.textContent = 'Ειδοποίηση σε εξέλιξη';
+  }
+
+  try {
+    // 1) Ενεργοποίηση κλήσεων / SMS
+    await triggerAlert();
+
+    // 2) Αποστολή incident log στο backend για AI καταγραφή
+    const baseMessage =
+      "Panic button activated via Noctua Panic Web App. Guard confirmed real incident.";
+    await sendIncidentToBackend(baseMessage);
+
+  } catch (err) {
+    console.error('Σφάλμα κατά την ενεργοποίηση:', err);
     if (statusBadge) {
-      statusBadge.textContent = 'Ειδοποίηση σε εξέλιξη';
-    }
-
-    try {
-      // 1) Ενεργοποίηση κλήσεων / SMS
-      await triggerAlert();
-
-      // 2) Αποστολή incident log στο backend για AI καταγραφή
-      const baseMessage =
-        "Panic button activated via Noctua Panic Web App. Guard confirmed real incident.";
-      await sendIncidentToBackend(baseMessage);
-
-    } catch (err) {
-      console.error('Σφάλμα κατά την ενεργοποίηση:', err);
-      if (statusBadge) {
-        statusBadge.textContent = 'Σφάλμα – απαιτείται έλεγχος';
-      }
+      statusBadge.textContent = 'Σφάλμα – απαιτείται έλεγχος';
     }
   }
+
+  // 👉 ΕΔΩ προστίθεται το incident UI flow
+  setTimeout(() => {
+    startIncidentFlowUI();
+  }, 15000); // 15" για δοκιμή – μετά 300000 (5 λεπτά)
+}
 
   function startActiveTimer() {
     if (!timeFromStartEl) return;
@@ -904,6 +958,103 @@
       setTimeout(() => msg.remove(), 400);
     }, 2000);
   }
+    function resetWebAppUI() {
+    // Κρύβουμε την κάρτα κατάστασης
+    if (statusCard) {
+      statusCard.classList.add('hidden');
+    }
+
+    // Σταματάμε το χρονόμετρο
+    if (activeTimer) {
+      clearInterval(activeTimer);
+      activeTimer = null;
+    }
+    startTimestamp = null;
+
+    // Μηδενίζουμε την ένδειξη χρόνου
+    if (timeFromStartEl) {
+      timeFromStartEl.textContent = '00:00';
+    }
+
+    // Επαναφέρουμε το badge
+    if (statusBadge) {
+      statusBadge.textContent = 'Live ενημέρωση';
+    }
+  }
+    /* =====================================================
+    INCIDENT REPORT UI (3 ερωτήσεις – χωρίς backend ακόμα)
+===================================================== */
+
+// Οι 3 ερωτήσεις
+const incidentQuestions = [
+  {
+    key: 'incident_type',
+    text: 'Τι είδους περιστατικό ήταν; (π.χ. παραβίαση χώρου, ύποπτο άτομο, ψευδής συναγερμός, τεχνικό ζήτημα, test)'
+  },
+  {
+    key: 'location',
+    text: 'Πού ακριβώς εντοπίστηκε; (π.χ. είσοδος, ζώνη Β2, προαύλιος χώρος)'
+  },
+  {
+    key: 'actions_taken',
+    text: 'Ολοκλήρωσες τις απαιτούμενες ενέργειες; Τι έκανες;'
+  }
+];
+
+let currentQuestionIndex = 0;
+let incidentAnswers = {};
+
+// Έναρξη UI
+function startIncidentFlowUI() {
+  const panel      = document.getElementById('incident-assistant');
+  const qEl        = document.getElementById('assistant-question');
+  const progressEl = document.getElementById('assistant-progress');
+  const answerEl   = document.getElementById('assistant-answer');
+
+  incidentAnswers = {};
+  currentQuestionIndex = 0;
+
+  qEl.textContent = incidentQuestions[0].text;
+  progressEl.textContent = `Ερώτηση 1 από ${incidentQuestions.length}`;
+  answerEl.value = '';
+
+  panel.classList.remove('hidden');
+}
+
+// Next button
+document.getElementById('assistant-next-btn')?.addEventListener('click', () => {
+  const answerEl = document.getElementById('assistant-answer');
+  const qEl      = document.getElementById('assistant-question');
+  const progressEl = document.getElementById('assistant-progress');
+  const panel = document.getElementById('incident-assistant');
+
+  const answer = answerEl.value.trim();
+  if (!answer) {
+    alert('Γράψε μια σύντομη απάντηση πριν συνεχίσεις.');
+    return;
+  }
+
+  // Αποθήκευση της απάντησης
+  const key = incidentQuestions[currentQuestionIndex].key;
+  incidentAnswers[key] = answer;
+
+  currentQuestionIndex++;
+
+  if (currentQuestionIndex < incidentQuestions.length) {
+    // Επόμενη ερώτηση
+    qEl.textContent = incidentQuestions[currentQuestionIndex].text;
+    progressEl.textContent = `Ερώτηση ${currentQuestionIndex+1} από ${incidentQuestions.length}`;
+    answerEl.value = '';
+  } else {
+    // Τέλος των 3 ερωτήσεων (UI only)
+    console.log('Incident answers (UI only):', incidentAnswers);
+    alert('Η καταγραφή του συμβάντος ολοκληρώθηκε.');
+    panel.classList.add('hidden');
+
+    // Επιστροφή στην αρχική κατάσταση του webapp
+    resetWebAppUI();
+  }
+});
   </script>
 </body>
 </html>
