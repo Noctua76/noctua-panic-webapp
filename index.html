@@ -619,303 +619,291 @@
 
   <script>
     // 🔹 Global βάση για όλα τα calls προς backend
-const BACKEND_BASE = 'https://noctua-panic-backend-production.up.railway.app';
+  const BACKEND_BASE = 'https://noctua-panic-backend-production.up.railway.app';
 
-// Helper για γρήγορο query
-const $ = (s) => document.querySelector(s);
+  // Helper για γρήγορο query
+  const $ = (s) => document.querySelector(s);
 
-// Βασικά στοιχεία UI
-const alertBtn        = $('.alert-btn');
-const statusCard      = $('.status-card');
-const modalBackdrop   = $('.modal-backdrop');
-const countdownEl     = $('.modal-countdown');
-const statusBadge     = document.querySelector('.status-badge');
-const timeFromStartEl = document.querySelector('.status-row strong');
+  // Βασικά στοιχεία UI
+  const alertBtn        = $('.alert-btn');
+  const statusCard      = $('.status-card');
+  const modalBackdrop   = $('.modal-backdrop');
+  const countdownEl     = $('.modal-countdown');
+  const statusBadge     = document.querySelector('.status-badge');
+  const timeFromStartEl = document.querySelector('.status-row strong');
 
-// Καταστάσεις
-let countdownTimer    = null;
-let activeTimer       = null;
-let startTimestamp    = null;
-let autoCancelTimeout = null;
+  // Καταστάσεις
+  let countdownTimer    = null;
+  let activeTimer       = null;
+  let startTimestamp    = null;
+  let autoCancelTimeout = null;
 
+  // ===== 1. Πάτημα ALERT → ανοίγει modal =====
+  if (alertBtn) {
+    alertBtn.addEventListener('click', () => {
+      openConfirmModal();
+    });
+  }
 
-    // ===== 1. Πάτημα ALERT → ανοίγει modal =====
-    if (alertBtn) {
-      alertBtn.addEventListener('click', () => {
-        openConfirmModal();
-      });
+  function openConfirmModal() {
+    if (!modalBackdrop) return;
+    modalBackdrop.classList.remove('hidden');
+
+    startCountdown(5);            // ξεκινά το countdown
+    startAutoCancelCountdown();   // αν δεν πατηθεί τίποτα → auto-cancel
+
+    attachModalHandlers();
+  }
+
+  function closeConfirmModal() {
+    if (!modalBackdrop) return;
+    modalBackdrop.classList.add('hidden');
+
+    cancelAutoCancelCountdown();  // σταματά το auto-cancel αν τρέχει
+    stopCountdown();              // σταματά το ρολόι στο modal
+  }
+
+  function attachModalHandlers() {
+    const cancelButton  = document.querySelector('.btn.btn-secondary');
+    const confirmButton = document.querySelector('.btn.btn-primary');
+
+    if (cancelButton) {
+      cancelButton.onclick = () => {
+        cancelAutoCancelCountdown();
+        closeConfirmModal();
+      };
     }
 
-    function openConfirmModal() {
-  if (!modalBackdrop) return;
-  modalBackdrop.classList.remove('hidden');
-
-  startCountdown(5);            // ξεκινά το countdown
-  startAutoCancelCountdown();   // αν δεν πατηθεί τίποτα → auto-cancel
-
-  attachModalHandlers();
-}
-
-
-    function closeConfirmModal() {
-  if (!modalBackdrop) return;
-  modalBackdrop.classList.add('hidden');
-
-  cancelAutoCancelCountdown();  // σταματά το auto-cancel αν τρέχει
-  stopCountdown();              // σταματά το ρολόι στο modal
-}
-
-
-    function attachModalHandlers() {
-      const cancelButton  = document.querySelector('.btn.btn-secondary');
-      const confirmButton = document.querySelector('.btn.btn-primary');
-
-      if (cancelButton) {
-  cancelButton.onclick = () => {
-    cancelAutoCancelCountdown();  // ο χρήστης πάτησε Άκυρο
-    closeConfirmModal();
-  };
-}
-
-if (confirmButton) {
-  confirmButton.onclick = async () => {
-    cancelAutoCancelCountdown();  // ο χρήστης πήρε απόφαση
-    closeConfirmModal();
-    await handleAlertConfirmed();
-  };
-}
-
+    if (confirmButton) {
+      confirmButton.onclick = async () => {
+        cancelAutoCancelCountdown();
+        closeConfirmModal();
+        await handleAlertConfirmed();
+      };
     }
+  }
 
-    function startCountdown(seconds) {
-      if (!countdownEl) return;
-      let remaining = seconds;
-      countdownEl.textContent = `${remaining}…`;
+  function startCountdown(seconds) {
+    if (!countdownEl) return;
+    let remaining = seconds;
+    countdownEl.textContent = `${remaining}…`;
 
-      countdownTimer = setInterval(() => {
-        remaining--;
-        if (remaining <= 0) {
-          stopCountdown();
-        } else {
-          countdownEl.textContent = `${remaining}…`;
-        }
-      }, 1000);
-    }
-
-    function stopCountdown() {
-      if (countdownTimer) {
-        clearInterval(countdownTimer);
-        countdownTimer = null;
+    countdownTimer = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        stopCountdown();
+      } else {
+        countdownEl.textContent = `${remaining}…`;
       }
+    }, 1000);
+  }
+
+  function stopCountdown() {
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+    }
+  }
+
+  async function handleAlertConfirmed() {
+    if (statusCard) {
+      statusCard.classList.remove('hidden');
     }
 
-    async function handleAlertConfirmed() {
-      if (statusCard) {
-        statusCard.classList.remove('hidden');
-      }
+    startTimestamp = Date.now();
+    startActiveTimer();
 
-      startTimestamp = Date.now();
-      startActiveTimer();
+    if (statusBadge) {
+      statusBadge.textContent = 'Ειδοποίηση σε εξέλιξη';
+    }
 
+    try {
+      // 1) Ενεργοποίηση κλήσεων / SMS
+      await triggerAlert();
+
+      // 2) Αποστολή incident log στο backend για AI καταγραφή
+      const baseMessage =
+        "Panic button activated via Noctua Panic Web App. Guard confirmed real incident.";
+      await sendIncidentToBackend(baseMessage);
+
+    } catch (err) {
+      console.error('Σφάλμα κατά την ενεργοποίηση:', err);
       if (statusBadge) {
-        statusBadge.textContent = 'Ειδοποίηση σε εξέλιξη';
-      }
-
-            try {
-        // 1) Ενεργοποίηση κλήσεων / SMS (όταν θα συνδεθεί ο provider)
-        await triggerAlert();
-
-        // 2) Αποστολή incident log στο backend για AI καταγραφή
-        const baseMessage = "Panic button activated via Noctua Panic Web App. Guard confirmed real incident.";
-        await sendIncidentToBackend(baseMessage);
-
-      } catch (err) {
-        console.error('Σφάλμα κατά την ενεργοποίηση:', err);
-        if (statusBadge) {
-          statusBadge.textContent = 'Σφάλμα – απαιτείται έλεγχος';
-        }
+        statusBadge.textContent = 'Σφάλμα – απαιτείται έλεγχος';
       }
     }
+  }
 
-    function startActiveTimer() {
-      if (!timeFromStartEl) return;
+  function startActiveTimer() {
+    if (!timeFromStartEl) return;
 
-      activeTimer = setInterval(() => {
-        if (!startTimestamp) return;
-        const diffMs   = Date.now() - startTimestamp;
-        const totalSec = Math.floor(diffMs / 1000);
-        const mm       = String(Math.floor(totalSec / 60)).padStart(2, '0');
-        const ss       = String(totalSec % 60).padStart(2, '0');
-        timeFromStartEl.textContent = `${mm}:${ss}`;
-      }, 1000);
+    activeTimer = setInterval(() => {
+      if (!startTimestamp) return;
+      const diffMs   = Date.now() - startTimestamp;
+      const totalSec = Math.floor(diffMs / 1000);
+      const mm       = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const ss       = String(totalSec % 60).padStart(2, '0');
+      timeFromStartEl.textContent = `${mm}:${ss}`;
+    }, 1000);
+  }
+
+  // ===== ALERT προς backend =====
+  async function triggerAlert() {
+    const endpoint = `${BACKEND_BASE}/alert`;   // αν το route είναι άλλο, άλλαξέ το
+
+    const payload = {
+      siteId:      'SITE_123',
+      guardId:     'GUARD_001',
+      source:      'noctua-panic-webapp',
+      triggeredAt: new Date().toISOString()
+    };
+
+    const response = await fetch(endpoint, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error('Alert request failed with status ' + response.status);
     }
+  }
 
-    async function triggerAlert() {
-      // 🔹 endpoint του backend για το alert
-      // αν στο server.js έχεις άλλο path (π.χ. /panic-alert), άλλαξέ το εδώ
-      const endpoint = `${BACKEND_BASE}/alert`;
+  // ===== Incident log προς backend /incident-log (AI Assistant) =====
+  async function sendIncidentToBackend(message) {
+    try {
+      const endpoint = `${BACKEND_BASE}/incident-log`;
 
       const payload = {
-        siteId:      'SITE_123',
-        guardId:     'GUARD_001',
-        source:      'noctua-panic-webapp',
-        triggeredAt: new Date().toISOString()
+        guardId: "GUARD_001",
+        siteId: "SITE_123",
+        timestamp: new Date().toISOString(),
+        message: message
       };
 
       const response = await fetch(endpoint, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        throw new Error('Alert request failed with status ' + response.status);
+        console.error("Incident-log request failed with status", response.status);
+        return;
       }
-    }
 
-        // ===== Incident log προς backend /incident-log (AI Assistant) =====
-    async function sendIncidentToBackend(message) {
-      try {
-        const endpoint = `${BACKEND_BASE}/incident-log`;  // ίδιο backend, όχι localhost
+      const data = await response.json();
+      console.log("Incident-log response:", data);
 
-        const payload = {
-          guardId: "GUARD_001",
-          siteId: "SITE_123",
-          timestamp: new Date().toISOString(),
-          message: message
-        };
-
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-          console.error("Incident-log request failed with status", response.status);
-          return;
-        }
-
-        const data = await response.json();
-        console.log("Incident-log response:", data);
-
-        if (data.assistantLog) {
-          alert("AI incident summary:\n\n" + data.assistantLog);
-        }
-      } catch (err) {
-        console.error("Error sending incident log:", err);
+      if (data.assistantLog) {
+        alert("AI incident summary:\n\n" + data.assistantLog);
       }
+    } catch (err) {
+      console.error("Error sending incident log:", err);
     }
-
-
-    // ===== LIVE CLOCK (Header) =====
-    function updateHeaderClock(){
-      const clockEl = document.getElementById('headerClock');
-      if (!clockEl) return;
-
-      const now = new Date();
-      clockEl.textContent = now.toLocaleTimeString('el-GR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
-
-    updateHeaderClock();
-    setInterval(updateHeaderClock, 1000);
-
-    // ===== SYSTEM STATUS CHECK (Online / Offline) =====
-    const statusEl      = document.getElementById('systemStatus');
-    const statusLabelEl = statusEl?.querySelector('.status-label');
-    const HEALTH_ENDPOINT = `${BACKEND_BASE}/health`;
-
-    function setSystemStatus(mode){
-      if (!statusEl || !statusLabelEl) return;
-
-      statusEl.classList.remove('online','offline');
-
-      if (mode === 'online'){
-        statusEl.classList.add('online');
-        statusLabelEl.textContent = 'Online';
-      } else {
-        statusEl.classList.add('offline');
-        statusLabelEl.textContent = 'Offline';
-      }
-    }
-
-    async function checkSystemStatus(){
-      try{
-        // Όταν θα υπάρχει backend:
-        // const res  = await fetch(HEALTH_ENDPOINT, { cache:'no-store' });
-        // const data = await res.json();
-        // if (data.status === 'ok') setSystemStatus('online');
-        // else setSystemStatus('offline');
-
-        // DEMO MODE – προς το παρόν πάντα Online
-        setSystemStatus('online');
-
-      }catch(err){
-        console.error('Health check failed:', err);
-        setSystemStatus('offline');
-      }
-    }
-
-    checkSystemStatus();
-    // setInterval(checkSystemStatus, 30000); // προαιρετικά επανάληψη κάθε 30”
-    /* ==========================================
-   AUTO-CANCEL AFTER COUNTDOWN (NO ACTION)
-========================================== */
-
-function startAutoCancelCountdown() {
-  // καθάρισε τυχόν προηγούμενο timeout
-  if (autoCancelTimeout) {
-    clearTimeout(autoCancelTimeout);
-    autoCancelTimeout = null;
   }
 
-  // Περίπου όσο κρατάει το countdown (5 δευτερόλεπτα)
-  autoCancelTimeout = setTimeout(() => {
-    autoCancelTimeout = null;
+  // ===== LIVE CLOCK (Header) =====
+  function updateHeaderClock(){
+    const clockEl = document.getElementById('headerClock');
+    if (!clockEl) return;
 
-    // Αν το modal είναι ακόμα ανοιχτό και δεν έχει γίνει κίνηση:
-    if (!modalBackdrop.classList.contains('hidden')) {
-      closeConfirmModal();      // θα καλέσει και stopCountdown()
-      showFalseAlarmMessage();  // μήνυμα "εσφαλμένη ενεργοποίηση"
-      // εδώ στο μέλλον μπορείς να καλέσεις backend για logging
-      // π.χ. logFalseTrigger();
-    }
-  }, 5500); // 5.5s για λίγο “μαξιλάρι”
-}
-
-function cancelAutoCancelCountdown() {
-  if (autoCancelTimeout) {
-    clearTimeout(autoCancelTimeout);
-    autoCancelTimeout = null;
+    const now = new Date();
+    clockEl.textContent = now.toLocaleTimeString('el-GR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
-}
 
-/* ==========================================
-   Μήνυμα "Εσφαλμένη ενεργοποίηση καταγράφηκε"
-========================================== */
+  updateHeaderClock();
+  setInterval(updateHeaderClock, 1000);
 
-function showFalseAlarmMessage() {
-  const msg = document.createElement('div');
-  msg.className = 'false-alarm-msg';
-  msg.textContent = '⚠️ Εσφαλμένη ενεργοποίηση καταγράφηκε';
+  // ===== SYSTEM STATUS CHECK (Online / Offline) =====
+  const statusEl      = document.getElementById('systemStatus');
+  const statusLabelEl = statusEl?.querySelector('.status-label');
+  const HEALTH_ENDPOINT = `${BACKEND_BASE}/health`;
 
-  document.body.appendChild(msg);
+  function setSystemStatus(mode){
+    if (!statusEl || !statusLabelEl) return;
 
-  // μικρή καθυστέρηση για smooth transition
-  setTimeout(() => {
-    msg.classList.add('show');
-  }, 50);
+    statusEl.classList.remove('online','offline');
 
-  // μετά από 2s εξαφανίζεται
-  setTimeout(() => {
-    msg.classList.remove('show');
-    setTimeout(() => msg.remove(), 400);
-  }, 2000);
-}
+    if (mode === 'online'){
+      statusEl.classList.add('online');
+      statusLabelEl.textContent = 'Online';
+    } else {
+      statusEl.classList.add('offline');
+      statusLabelEl.textContent = 'Offline';
+    }
+  }
 
+  async function checkSystemStatus(){
+    try{
+      // Όταν θα έχεις υλοποιήσει το /health:
+      // const res  = await fetch(HEALTH_ENDPOINT, { cache:'no-store' });
+      // const data = await res.json();
+      // if (data.status === 'ok') setSystemStatus('online');
+      // else setSystemStatus('offline');
+
+      // Προς το παρόν: πάντα Online
+      setSystemStatus('online');
+
+    }catch(err){
+      console.error('Health check failed:', err);
+      setSystemStatus('offline');
+    }
+  }
+
+  checkSystemStatus();
+  // setInterval(checkSystemStatus, 30000);
+
+  /* ==========================================
+     AUTO-CANCEL AFTER COUNTDOWN (NO ACTION)
+  ========================================== */
+
+  function startAutoCancelCountdown() {
+    if (autoCancelTimeout) {
+      clearTimeout(autoCancelTimeout);
+      autoCancelTimeout = null;
+    }
+
+    autoCancelTimeout = setTimeout(() => {
+      autoCancelTimeout = null;
+
+      if (!modalBackdrop.classList.contains('hidden')) {
+        closeConfirmModal();
+        showFalseAlarmMessage();
+      }
+    }, 5500);
+  }
+
+  function cancelAutoCancelCountdown() {
+    if (autoCancelTimeout) {
+      clearTimeout(autoCancelTimeout);
+      autoCancelTimeout = null;
+    }
+  }
+
+  /* ==========================================
+     Μήνυμα "Εσφαλμένη ενεργοποίηση καταγράφηκε"
+  ========================================== */
+
+  function showFalseAlarmMessage() {
+    const msg = document.createElement('div');
+    msg.className = 'false-alarm-msg';
+    msg.textContent = '⚠️ Εσφαλμένη ενεργοποίηση καταγράφηκε';
+
+    document.body.appendChild(msg);
+
+    setTimeout(() => {
+      msg.classList.add('show');
+    }, 50);
+
+    setTimeout(() => {
+      msg.classList.remove('show');
+      setTimeout(() => msg.remove(), 400);
+    }, 2000);
+  }
   </script>
 </body>
 </html>
