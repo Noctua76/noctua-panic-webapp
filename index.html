@@ -621,8 +621,10 @@
     // 🔹 Global βάση για όλα τα calls προς backend
 const BACKEND_BASE = 'https://noctua-panic-backend-production.up.railway.app';
 
+// Helper για γρήγορο query
 const $ = (s) => document.querySelector(s);
 
+// Βασικά στοιχεία UI
 const alertBtn        = $('.alert-btn');
 const statusCard      = $('.status-card');
 const modalBackdrop   = $('.modal-backdrop');
@@ -630,9 +632,10 @@ const countdownEl     = $('.modal-countdown');
 const statusBadge     = document.querySelector('.status-badge');
 const timeFromStartEl = document.querySelector('.status-row strong');
 
-let countdownTimer = null;
-let activeTimer    = null;
-let startTimestamp = null;
+// Καταστάσεις
+let countdownTimer    = null;
+let activeTimer       = null;
+let startTimestamp    = null;
 let autoCancelTimeout = null;
 
 
