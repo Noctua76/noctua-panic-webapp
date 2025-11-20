@@ -618,19 +618,22 @@
   </div>
 
   <script>
-    const $ = (s) => document.querySelector(s);
+    // 🔹 Global βάση για όλα τα calls προς backend
+const BACKEND_BASE = 'https://noctua-panic-backend-production.up.railway.app';
 
-    const alertBtn        = $('.alert-btn');
-    const statusCard      = $('.status-card');
-    const modalBackdrop   = $('.modal-backdrop');
-    const countdownEl     = $('.modal-countdown');
-    const statusBadge     = document.querySelector('.status-badge');
-    const timeFromStartEl = document.querySelector('.status-row strong');
+const $ = (s) => document.querySelector(s);
 
-    let countdownTimer = null;
-    let activeTimer    = null;
-    let startTimestamp = null;
-    let autoCancelTimeout = null;
+const alertBtn        = $('.alert-btn');
+const statusCard      = $('.status-card');
+const modalBackdrop   = $('.modal-backdrop');
+const countdownEl     = $('.modal-countdown');
+const statusBadge     = document.querySelector('.status-badge');
+const timeFromStartEl = document.querySelector('.status-row strong');
+
+let countdownTimer = null;
+let activeTimer    = null;
+let startTimestamp = null;
+let autoCancelTimeout = null;
 
 
     // ===== 1. Πάτημα ALERT → ανοίγει modal =====
@@ -745,7 +748,9 @@ if (confirmButton) {
     }
 
     async function triggerAlert() {
-      const BACKEND_BASE = 'https://noctua-panic-backend-production.up.railway.app';
+      // 🔹 endpoint του backend για το alert
+      // αν στο server.js έχεις άλλο path (π.χ. /panic-alert), άλλαξέ το εδώ
+      const endpoint = `${BACKEND_BASE}/alert`;
 
       const payload = {
         siteId:      'SITE_123',
@@ -768,14 +773,16 @@ if (confirmButton) {
         // ===== Incident log προς backend /incident-log (AI Assistant) =====
     async function sendIncidentToBackend(message) {
       try {
+        const endpoint = `${BACKEND_BASE}/incident-log`;  // ίδιο backend, όχι localhost
+
         const payload = {
-          guardId: "GUARD_001",          // προσωρινά σταθερές τιμές
+          guardId: "GUARD_001",
           siteId: "SITE_123",
           timestamp: new Date().toISOString(),
           message: message
         };
 
-        const response = await fetch("http://localhost:5000/incident-log", {
+        const response = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
@@ -789,7 +796,6 @@ if (confirmButton) {
         const data = await response.json();
         console.log("Incident-log response:", data);
 
-        // Προαιρετικά: δείξε στο guard τη σύνοψη που έφτιαξε ο Assistant
         if (data.assistantLog) {
           alert("AI incident summary:\n\n" + data.assistantLog);
         }
