@@ -932,25 +932,35 @@ async function sendIncidentDetailsToBackend(answers) {
     }
   }
 
-  async function checkSystemStatus(){
-    try{
-      // Όταν θα έχεις υλοποιήσει το /health:
-      // const res  = await fetch(HEALTH_ENDPOINT, { cache:'no-store' });
-      // const data = await res.json();
-      // if (data.status === 'ok') setSystemStatus('online');
-      // else setSystemStatus('offline');
+  async function checkSystemStatus() {
+  try {
+    const res = await fetch(HEALTH_ENDPOINT, {
+      method: 'GET',
+      cache: 'no-store'
+    });
 
-      // Προς το παρόν: πάντα Online
+    if (!res.ok) {
+      throw new Error('Non-200 status: ' + res.status);
+    }
+
+    const data = await res.json();
+    console.log('Health response:', data);
+
+    if (data.status === 'ok') {
       setSystemStatus('online');
-
-    }catch(err){
-      console.error('Health check failed:', err);
+    } else {
       setSystemStatus('offline');
     }
+  } catch (err) {
+    console.error('Health check failed:', err);
+    setSystemStatus('offline');
   }
+}
 
-  checkSystemStatus();
-  // setInterval(checkSystemStatus, 30000);
+// Πρώτος έλεγχος όταν ανοίξει η εφαρμογή
+checkSystemStatus();
+// Περιοδικός έλεγχος κάθε 30"
+setInterval(checkSystemStatus, 30000);
 
   /* ==========================================
      AUTO-CANCEL AFTER COUNTDOWN (NO ACTION)
