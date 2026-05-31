@@ -1258,6 +1258,27 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   // Περιοδικός έλεγχος κάθε 30"
   setInterval(checkSystemStatus, 30000);
 
+  // ===== AUTO RECONNECT WHEN APP RETURNS TO FOREGROUND =====
+function reconnectWhenAppReturns() {
+  if (document.visibilityState === "visible") {
+    checkSystemStatus();
+  }
+}
+
+document.addEventListener("visibilitychange", reconnectWhenAppReturns);
+
+window.addEventListener("focus", () => {
+  checkSystemStatus();
+});
+
+window.addEventListener("pageshow", () => {
+  checkSystemStatus();
+});
+
+window.addEventListener("online", () => {
+  checkSystemStatus();
+});
+
   /* ==========================================
      AUTO-CANCEL AFTER COUNTDOWN (NO ACTION)
   ========================================== */
