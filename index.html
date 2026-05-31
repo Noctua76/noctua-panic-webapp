@@ -170,6 +170,20 @@
 .guard-strip strong{
   color:var(--text);
 }
+.logout-btn{
+  margin-top:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.16);
+  background:transparent;
+  color:var(--muted);
+  font-size:11px;
+  cursor:pointer;
+}
+
+.logout-btn:active{
+  transform:scale(.97);
+}
 
     /* ========== Header ========== */
     .app-header{
@@ -675,9 +689,12 @@
         <div class="header-time" id="headerClock">--:--</div>
       </div>
       <div class="guard-strip" id="guardInfo">
-       <span>Guard: <strong id="guardName">-</strong></span>
-       <span>Site ID: <strong id="guardSite">-</strong></span>
-      </div>
+  <span>Guard: <strong id="guardName">-</strong></span>
+  <span>Site ID: <strong id="guardSite">-</strong></span>
+  <button id="guardLogoutBtn" class="logout-btn" type="button">
+    Logout
+  </button>
+</div>
     </header>
 
     <!-- Main -->
@@ -846,6 +863,7 @@ const guardPassword = document.getElementById("guardPassword");
 const loginError = document.getElementById("loginError");
 const guardNameEl = document.getElementById("guardName");
 const guardSiteEl = document.getElementById("guardSite");
+const guardLogoutBtn = document.getElementById("guardLogoutBtn");
 
 function loadSavedGuardSession() {
   try {
@@ -877,6 +895,12 @@ function showLoginScreen() {
 
   if (mainApp) mainApp.classList.add("hidden");
   if (loginScreen) loginScreen.classList.remove("hidden");
+}
+
+function logoutGuard() {
+  localStorage.removeItem(SESSION_KEY);
+  currentGuardSession = null;
+  showLoginScreen();
 }
 
 async function loginGuard() {
@@ -917,6 +941,10 @@ async function loginGuard() {
   } finally {
     if (guardLoginBtn) guardLoginBtn.textContent = "Login";
   }
+}
+
+if (guardLogoutBtn) {
+  guardLogoutBtn.addEventListener("click", logoutGuard);
 }
 
 if (guardLoginBtn) {
