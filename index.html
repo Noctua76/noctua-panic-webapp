@@ -888,6 +888,7 @@ function showMainApp(sessionData) {
   if (guardSiteEl) {
     guardSiteEl.textContent = sessionData.guard?.site_id || "-";
   }
+  startGuardHeartbeat();
 }
 
 function showLoginScreen() {
@@ -897,10 +898,64 @@ function showLoginScreen() {
   if (loginScreen) loginScreen.classList.remove("hidden");
 }
 
-function logoutGuard() {
-  localStorage.removeItem(SESSION_KEY);
-  currentGuardSession = null;
-  showLoginScreen();
+async function logoutGuard() {
+  try {
+    if (currentGuardSession?.guard?.id && currentGuardSession?.session?.id) {
+      await fetch(`${BACKEND_BASE}/guard/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guard_id: currentGuardSession.guard.id,
+          session_id: currentGuardSession.session.id
+        })
+      });
+    }
+  } catch (err) {
+    console.error("Guard logout backend error:", err);
+  } finally {
+    localStorage.removeItem(SESSION_KEY);
+    currentGuardSession = null;
+    stopGuardHeartbeat();
+    showLoginScreen();
+  }
+}
+
+let guardHeartbeatTimer = null;
+
+async function sendGuardHeartbeat() {
+  if (!currentGuardSession?.guard?.id || !currentGuardSession?.session?.id) {
+    return;
+  }
+
+  try {
+    await fetch(`${BACKEND_BASE}/guard/heartbeat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        guard_id: currentGuardSession.guard.id,
+        session_id: currentGuardSession.session.id
+      })
+    });
+  } catch (err) {
+    console.error("Guard heartbeat failed:", err);
+  }
+}
+
+function startGuardHeartbeat() {
+  stopGuardHeartbeat();
+
+  sendGuardHeartbeat();
+
+  guardHeartbeatTimer = setInterval(() => {
+    sendGuardHeartbeat();
+  }, 30000);
+}
+
+function stopGuardHeartbeat() {
+  if (guardHeartbeatTimer) {
+    clearInterval(guardHeartbeatTimer);
+    guardHeartbeatTimer = null;
+  }
 }
 
 async function loginGuard() {
@@ -1262,6 +1317,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 function reconnectWhenAppReturns() {
   if (document.visibilityState === "visible") {
     checkSystemStatus();
+    sendGuardHeartbeat();
   }
 }
 
@@ -1269,14 +1325,17 @@ document.addEventListener("visibilitychange", reconnectWhenAppReturns);
 
 window.addEventListener("focus", () => {
   checkSystemStatus();
+  sendGuardHeartbeat();
 });
 
 window.addEventListener("pageshow", () => {
   checkSystemStatus();
+  sendGuardHeartbeat();
 });
 
 window.addEventListener("online", () => {
   checkSystemStatus();
+  sendGuardHeartbeat();
 });
 
   /* ==========================================
