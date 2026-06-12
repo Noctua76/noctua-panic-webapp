@@ -889,6 +889,7 @@ function showMainApp(sessionData) {
     guardSiteEl.textContent = sessionData.guard?.site_id || "-";
   }
   startGuardHeartbeat();
+  startGuardLocationTracking();
 }
 
 function showLoginScreen() {
@@ -916,11 +917,64 @@ async function logoutGuard() {
     localStorage.removeItem(SESSION_KEY);
     currentGuardSession = null;
     stopGuardHeartbeat();
+    stopGuardLocationTracking();
     showLoginScreen();
   }
 }
 
 let guardHeartbeatTimer = null;
+let guardLocationWatchId = null;
+
+async function sendGuardLocation(position) {
+  if (!currentGuardSession?.guard?.id) return;
+
+  const coords = position.coords;
+
+  try {
+    await fetch(`${BACKEND_BASE}/guard/location`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        guard_id: currentGuardSession.guard.id,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        accuracy: coords.accuracy,
+        speed: coords.speed,
+        battery: null
+      })
+    });
+  } catch (err) {
+    console.error("Guard location update failed:", err);
+  }
+}
+
+function startGuardLocationTracking() {
+  stopGuardLocationTracking();
+
+  if (!navigator.geolocation) {
+    console.warn("Geolocation is not supported on this device.");
+    return;
+  }
+
+  guardLocationWatchId = navigator.geolocation.watchPosition(
+    sendGuardLocation,
+    (err) => {
+      console.error("Guard location permission/error:", err);
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 15000,
+      timeout: 20000
+    }
+  );
+}
+
+function stopGuardLocationTracking() {
+  if (guardLocationWatchId !== null) {
+    navigator.geolocation.clearWatch(guardLocationWatchId);
+    guardLocationWatchId = null;
+  }
+}
 
 async function sendGuardHeartbeat() {
   if (!currentGuardSession?.guard?.id || !currentGuardSession?.session?.id) {
