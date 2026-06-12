@@ -691,6 +691,7 @@
       <div class="guard-strip" id="guardInfo">
   <span>Guard: <strong id="guardName">-</strong></span>
   <span>Site ID: <strong id="guardSite">-</strong></span>
+  <span>GPS: <strong id="gpsStatus">Waiting</strong></span>
   <button id="guardLogoutBtn" class="logout-btn" type="button">
     Logout
   </button>
@@ -863,6 +864,7 @@ const guardPassword = document.getElementById("guardPassword");
 const loginError = document.getElementById("loginError");
 const guardNameEl = document.getElementById("guardName");
 const guardSiteEl = document.getElementById("guardSite");
+const gpsStatusEl = document.getElementById("gpsStatus");
 const guardLogoutBtn = document.getElementById("guardLogoutBtn");
 
 function loadSavedGuardSession() {
@@ -929,6 +931,9 @@ async function sendGuardLocation(position) {
   if (!currentGuardSession?.guard?.id) return;
 
   const coords = position.coords;
+  if (gpsStatusEl) {
+  gpsStatusEl.textContent = `Sending ${coords.accuracy.toFixed(0)}m`;
+}
   console.log("GPS position received:", {
   latitude: coords.latitude,
   longitude: coords.longitude,
@@ -950,7 +955,13 @@ async function sendGuardLocation(position) {
   battery: null
 })
     });
+    if (gpsStatusEl) {
+  gpsStatusEl.textContent = "Live";
+}
   } catch (err) {
+    if (gpsStatusEl) {
+  gpsStatusEl.textContent = "Send failed";
+}
     console.error("Guard location update failed:", err);
   }
 }
