@@ -942,6 +942,14 @@ async function sendGuardLocation(position) {
 });
 
   try {
+    console.log("GPS PAYLOAD", {
+  guard_id: currentGuardSession?.guard?.id,
+  session_id: currentGuardSession?.session?.id,
+  latitude: coords.latitude,
+  longitude: coords.longitude,
+  accuracy: coords.accuracy,
+  speed: coords.speed
+});
     const response = await fetch(`${BACKEND_BASE}/guard/location`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -957,6 +965,7 @@ async function sendGuardLocation(position) {
 });
 
 const data = await response.json();
+console.log("GPS RESPONSE", response.status, data);
 
 if (!response.ok || data.status !== "ok") {
   console.error("GPS backend rejected:", data);
