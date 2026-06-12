@@ -950,6 +950,16 @@ async function sendGuardLocation(position) {
   accuracy: coords.accuracy,
   speed: coords.speed
 });
+let batteryLevel = null;
+
+try {
+  if (navigator.getBattery) {
+    const batteryInfo = await navigator.getBattery();
+    batteryLevel = Math.round(batteryInfo.level * 100);
+  }
+} catch (batteryErr) {
+  console.warn("Battery status not available:", batteryErr);
+}
     const response = await fetch(`${BACKEND_BASE}/guard/location`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -960,7 +970,7 @@ async function sendGuardLocation(position) {
     longitude: coords.longitude,
     accuracy: coords.accuracy,
     speed: coords.speed,
-    battery: null
+    battery: batteryLevel
   })
 });
 
