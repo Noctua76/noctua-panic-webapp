@@ -963,10 +963,28 @@ function startGuardLocationTracking() {
     return;
   }
 
+  navigator.geolocation.getCurrentPosition(
+    sendGuardLocation,
+    (err) => {
+      console.error("Immediate guard location error:", {
+        code: err.code,
+        message: err.message
+      });
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 20000
+    }
+  );
+
   guardLocationWatchId = navigator.geolocation.watchPosition(
     sendGuardLocation,
     (err) => {
-      console.error("Guard location permission/error:", err);
+      console.error("Guard location permission/error:", {
+        code: err.code,
+        message: err.message
+      });
     },
     {
       enableHighAccuracy: true,
