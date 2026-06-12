@@ -929,19 +929,26 @@ async function sendGuardLocation(position) {
   if (!currentGuardSession?.guard?.id) return;
 
   const coords = position.coords;
+  console.log("GPS position received:", {
+  latitude: coords.latitude,
+  longitude: coords.longitude,
+  accuracy: coords.accuracy,
+  guard_id: currentGuardSession?.guard?.id
+});
 
   try {
     await fetch(`${BACKEND_BASE}/guard/location`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        guard_id: currentGuardSession.guard.id,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        accuracy: coords.accuracy,
-        speed: coords.speed,
-        battery: null
-      })
+  guard_id: currentGuardSession.guard.id,
+  session_id: currentGuardSession.session.id,
+  latitude: coords.latitude,
+  longitude: coords.longitude,
+  accuracy: coords.accuracy,
+  speed: coords.speed,
+  battery: null
+})
     });
   } catch (err) {
     console.error("Guard location update failed:", err);
