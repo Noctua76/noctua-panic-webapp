@@ -926,6 +926,7 @@ async function logoutGuard() {
 
 let guardHeartbeatTimer = null;
 let guardLocationWatchId = null;
+let latestGuardLocation = null;
 
 async function sendGuardLocation(position) {
   if (!currentGuardSession?.guard?.id) return;
@@ -960,6 +961,13 @@ try {
 } catch (batteryErr) {
   console.warn("Battery status not available:", batteryErr);
 }
+latestGuardLocation = {
+  latitude: coords.latitude,
+  longitude: coords.longitude,
+  accuracy: coords.accuracy,
+  battery: batteryLevel,
+  timestamp: new Date().toISOString()
+};
     const response = await fetch(`${BACKEND_BASE}/guard/location`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -1280,12 +1288,19 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     const endpoint = `${BACKEND_BASE}/alert`;
 
     const payload = {
-      siteId: currentGuardSession?.guard?.site_id,
-      guardId: currentGuardSession?.guard?.id,
-      sessionId: currentGuardSession?.session?.id,
-      source: 'aegis-link-webapp',
-      triggeredAt: new Date().toISOString()
-   };
+  siteId: currentGuardSession?.guard?.site_id,
+  guardId: currentGuardSession?.guard?.id,
+  sessionId: currentGuardSession?.session?.id,
+  source: 'aegis-link-webapp',
+  triggeredAt: new Date().toISOString(),
+
+  latitude: latestGuardLocation?.latitude || null,
+  longitude: latestGuardLocation?.longitude || null,
+  accuracy: latestGuardLocation?.accuracy || null,
+  battery: latestGuardLocation?.battery || null,
+  locationAddress: null,
+  locationTimestamp: latestGuardLocation?.timestamp || null
+};
 
     const response = await fetch(endpoint, {
       method:'POST',
