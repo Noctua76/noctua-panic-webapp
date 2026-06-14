@@ -1,57 +1,235 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="el">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Aegis Link Patrol</title>
+<title>Aegis Link Patrol V1</title>
 
 <style>
+:root{
+  --bg:#03040a;
+  --bg-soft:#0c0f18;
+  --card:#11141f;
+  --accent:#ff4b4b;
+  --accent-soft:#ff8b6a;
+  --text:#f5f5fa;
+  --muted:#8e93a8;
+  --border:#262a36;
+  --radius:22px;
+  --max-width:460px;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+html,body{
+  min-height:100%;
+  background:radial-gradient(circle at top,#202642 0,#03040a 55%);
+  color:var(--text);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
 body{
-  font-family: Arial, sans-serif;
-  background:#0f172a;
-  color:white;
   display:flex;
   justify-content:center;
-  align-items:center;
-  height:100vh;
-  margin:0;
 }
 
-.card{
+.app{
+  width:100%;
+  max-width:var(--max-width);
+  min-height:100vh;
+  padding:18px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.patrol-card{
+  margin-top:20px;
+  border-radius:28px;
+  background:
+    radial-gradient(circle at 0 0,rgba(255,255,255,.05),transparent 55%),
+    linear-gradient(145deg,#080914,#131627);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 28px 60px rgba(0,0,0,.9);
+  padding:26px 20px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+
+.patrol-header{
   text-align:center;
-  padding:32px;
-  max-width:400px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
 }
 
-h1{
-  margin-bottom:12px;
+.version-pill{
+  align-self:center;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  background:rgba(59,130,246,.14);
+  border:1px solid rgba(96,165,250,.45);
+  color:#bfdbfe;
+}
+
+.patrol-title{
+  font-size:24px;
+  letter-spacing:.08em;
+}
+
+.patrol-subtitle{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.45;
+}
+
+.patrol-status{
+  border-radius:20px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.status-row{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  font-size:13px;
+  color:var(--muted);
+}
+
+.status-row strong{
+  color:var(--text);
+  text-align:right;
+}
+
+.scan-box{
+  border-radius:24px;
+  background:rgba(255,255,255,.03);
+  border:1px dashed rgba(255,255,255,.18);
+  padding:26px 18px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.scan-icon{
+  font-size:42px;
+}
+
+.scan-title{
+  font-size:18px;
+  font-weight:800;
+  letter-spacing:.06em;
+}
+
+.scan-text{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.45;
+}
+
+.scan-btn{
+  margin-top:8px;
+  width:100%;
+  padding:13px 16px;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  background:linear-gradient(145deg,#2563eb,#60a5fa);
+  color:white;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  box-shadow:0 0 18px rgba(37,99,235,.55);
 }
 
 .back-btn{
-  display:inline-block;
-  margin-top:24px;
-  padding:12px 18px;
-  border-radius:10px;
+  display:block;
+  text-align:center;
+  padding:12px 16px;
+  border-radius:999px;
   text-decoration:none;
-  background:#1e293b;
-  color:white;
+  border:1px solid rgba(255,255,255,.14);
+  color:var(--muted);
+  background:rgba(255,255,255,.03);
+  font-size:13px;
+  font-weight:700;
+}
+
+.footer{
+  margin-top:auto;
+  text-align:center;
+  font-size:11px;
+  color:var(--muted);
 }
 </style>
-
 </head>
 
 <body>
 
-<div class="card">
+<div class="app">
 
-<h1>📷 QR Patrol</h1>
+  <section class="patrol-card">
 
-<p>Coming Soon</p>
+    <div class="patrol-header">
+      <div class="version-pill">QR PATROL V.1</div>
+      <h1 class="patrol-title">📷 QR Patrol</h1>
+      <p class="patrol-subtitle">
+        Scan assigned checkpoints during patrol rounds.
+      </p>
+    </div>
 
-<a href="index.html" class="back-btn">
-← Back to Alert System
-</a>
+    <div class="patrol-status">
+      <div class="status-row">
+        <span>Module Status</span>
+        <strong>Ready for V.1 Setup</strong>
+      </div>
+      <div class="status-row">
+        <span>Mode</span>
+        <strong>Checkpoint Scan</strong>
+      </div>
+      <div class="status-row">
+        <span>GPS Evidence</span>
+        <strong>Planned</strong>
+      </div>
+    </div>
+
+    <div class="scan-box">
+      <div class="scan-icon">▦</div>
+      <div class="scan-title">Scan Patrol Checkpoint</div>
+      <p class="scan-text">
+        The guard will scan the QR code placed at each checkpoint.
+        The scan will later record guard, site, checkpoint, time and GPS snapshot.
+      </p>
+
+      <button class="scan-btn" type="button">
+        Start Scan
+      </button>
+    </div>
+
+    <a href="index.html" class="back-btn">
+      ← Back to Alert System
+    </a>
+
+  </section>
+
+  <footer class="footer">
+    © Noctua Core – Aegis Link Patrol Module
+  </footer>
 
 </div>
 
