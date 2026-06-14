@@ -309,6 +309,36 @@
       color:var(--text);
     }
 
+    .action-switch{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.action-tab{
+  text-align:center;
+  padding:11px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.06em;
+  text-decoration:none;
+  cursor:pointer;
+}
+
+.action-tab.active{
+  background:linear-gradient(145deg,var(--accent),var(--accent-soft));
+  color:#fff;
+  box-shadow:0 0 16px rgba(255,75,75,.45);
+}
+
+.patrol-link{
+  color:#dbeafe;
+}
+
     /* ========== ALERT PANEL ========== */
     .alert-panel{
       margin-top:4px;
@@ -703,6 +733,16 @@
       <p class="hint-text">
         <strong>Έτοιμο για χρήση.</strong> Πατήστε <strong>ALERT</strong> μόνο σε περίπτωση πραγματικής απειλής.
       </p>
+
+      <div class="action-switch">
+  <button class="action-tab active" type="button">
+    🚨 ALERT
+  </button>
+
+  <a href="patrol.html" class="action-tab patrol-link">
+    📷 QR PATROL
+  </a>
+</div>
 
       <!-- Alert panel -->
       <section class="alert-panel ready">
