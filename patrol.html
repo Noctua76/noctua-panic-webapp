@@ -18,13 +18,11 @@
   --border:#262a36;
   --radius:22px;
   --max-width:460px;
+  --success:#22c55e;
+  --error:#ef4444;
 }
 
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-}
+*{box-sizing:border-box;margin:0;padding:0;}
 
 html,body{
   min-height:100%;
@@ -33,10 +31,7 @@ html,body{
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 }
 
-body{
-  display:flex;
-  justify-content:center;
-}
+body{display:flex;justify-content:center;}
 
 .app{
   width:100%;
@@ -62,12 +57,7 @@ body{
   gap:18px;
 }
 
-.patrol-header{
-  text-align:center;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-}
+.patrol-header{text-align:center;display:flex;flex-direction:column;gap:6px;}
 
 .version-pill{
   align-self:center;
@@ -81,10 +71,7 @@ body{
   color:#bfdbfe;
 }
 
-.patrol-title{
-  font-size:24px;
-  letter-spacing:.08em;
-}
+.patrol-title{font-size:24px;letter-spacing:.08em;}
 
 .patrol-subtitle{
   font-size:13px;
@@ -126,9 +113,7 @@ body{
   gap:12px;
 }
 
-.scan-icon{
-  font-size:42px;
-}
+.scan-icon{font-size:42px;}
 
 .scan-title{
   font-size:18px;
@@ -155,6 +140,33 @@ body{
   letter-spacing:.08em;
   text-transform:uppercase;
   box-shadow:0 0 18px rgba(37,99,235,.55);
+}
+
+.scan-btn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+.result-box{
+  display:none;
+  border-radius:18px;
+  padding:14px;
+  font-size:13px;
+  line-height:1.5;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04);
+}
+
+.result-box.success{
+  display:block;
+  border-color:rgba(34,197,94,.45);
+  color:#bbf7d0;
+}
+
+.result-box.error{
+  display:block;
+  border-color:rgba(239,68,68,.45);
+  color:#fecaca;
 }
 
 .back-btn{
@@ -196,7 +208,7 @@ body{
     <div class="patrol-status">
       <div class="status-row">
         <span>Module Status</span>
-        <strong>Ready for V.1 Setup</strong>
+        <strong id="moduleStatus">Ready</strong>
       </div>
       <div class="status-row">
         <span>Mode</span>
@@ -204,21 +216,22 @@ body{
       </div>
       <div class="status-row">
         <span>GPS Evidence</span>
-        <strong>Planned</strong>
+        <strong id="gpsStatus">Required</strong>
       </div>
     </div>
 
     <div class="scan-box">
       <div class="scan-icon">▦</div>
       <div class="scan-title">Scan Patrol Checkpoint</div>
-      <p class="scan-text">
-        The guard will scan the QR code placed at each checkpoint.
-        The scan will later record guard, site, checkpoint, time and GPS snapshot.
+      <p class="scan-text" id="scanText">
+        Press the button below to record this patrol checkpoint.
       </p>
 
-      <button class="scan-btn" type="button">
-        Start Scan
+      <button class="scan-btn" type="button" id="scanBtn">
+        Record Patrol
       </button>
+
+      <div id="resultBox" class="result-box"></div>
     </div>
 
     <a href="index.html" class="back-btn">
@@ -232,6 +245,125 @@ body{
   </footer>
 
 </div>
+
+<script>
+const API_BASE_URL = "https://noctua-panic-backend-production.up.railway.app";
+
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
+
+const scanBtn = document.getElementById("scanBtn");
+const resultBox = document.getElementById("resultBox");
+const moduleStatus = document.getElementById("moduleStatus");
+const gpsStatus = document.getElementById("gpsStatus");
+const scanText = document.getElementById("scanText");
+
+function showResult(type, html) {
+  resultBox.className = `result-box ${type}`;
+  resultBox.innerHTML = html;
+}
+
+if (!token) {
+  moduleStatus.textContent = "Invalid QR";
+  scanBtn.disabled = true;
+  scanText.textContent = "No patrol token was found in this QR link.";
+  showResult("error", "Invalid patrol QR. Token is missing.");
+}
+
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("GPS is not supported on this device."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
+      },
+      (error) => {
+        reject(error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
+  });
+}
+
+scanBtn.addEventListener("click", async () => {
+  if (!token) return;
+
+  scanBtn.disabled = true;
+  scanBtn.textContent = "Recording...";
+  moduleStatus.textContent = "Recording";
+  gpsStatus.textContent = "Locating...";
+
+  try {
+    const location = await getCurrentPosition();
+
+    gpsStatus.textContent = `${Math.round(location.accuracy)}m`;
+
+    const response = await fetch(`${API_BASE_URL}/patrol/scan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.status !== "ok") {
+      throw new Error(data.message || "Patrol scan failed");
+    }
+
+    moduleStatus.textContent = "Recorded";
+    scanBtn.textContent = "Patrol Recorded";
+
+    const recordedAt = data.patrol?.patrol_time
+      ? new Date(data.patrol.patrol_time).toLocaleString("el-GR")
+      : new Date().toLocaleString("el-GR");
+
+    showResult(
+      "success",
+      `
+      <strong>Patrol Recorded Successfully</strong><br>
+      Checkpoint: ${data.point?.name || "-"}<br>
+      Site: ${data.point?.site_name || "-"}<br>
+      Time: ${recordedAt}<br>
+      GPS Accuracy: ${Math.round(location.accuracy)}m
+      `
+    );
+  } catch (err) {
+    console.error(err);
+
+    moduleStatus.textContent = "Failed";
+    gpsStatus.textContent = "Failed";
+    scanBtn.disabled = false;
+    scanBtn.textContent = "Try Again";
+
+    showResult(
+      "error",
+      `
+      <strong>Patrol scan failed</strong><br>
+      ${err.message || "Unknown error"}
+      `
+    );
+  }
+});
+</script>
 
 </body>
 </html>
