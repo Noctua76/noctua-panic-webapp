@@ -188,7 +188,22 @@ body{display:flex;justify-content:center;}
   font-size:11px;
   color:var(--muted);
 }
+
+#qr-reader{
+  display:none;
+  width:100%;
+  overflow:hidden;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.14);
+  background:#000;
+}
+
+#qr-reader video{
+  border-radius:18px;
+}
+
 </style>
+<script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 
 <body>
@@ -228,10 +243,12 @@ body{display:flex;justify-content:center;}
       </p>
 
       <button class="scan-btn" type="button" id="scanBtn">
-        Record Patrol
-      </button>
+  Start Scanner
+</button>
 
-      <div id="resultBox" class="result-box"></div>
+<div id="qr-reader"></div>
+
+<div id="resultBox" class="result-box"></div>
     </div>
 
     <a href="index.html" class="back-btn">
@@ -249,25 +266,43 @@ body{display:flex;justify-content:center;}
 <script>
 const API_BASE_URL = "https://noctua-panic-backend-production.up.railway.app";
 
-const params = new URLSearchParams(window.location.search);
-const token = params.get("token");
-
 const scanBtn = document.getElementById("scanBtn");
 const resultBox = document.getElementById("resultBox");
 const moduleStatus = document.getElementById("moduleStatus");
 const gpsStatus = document.getElementById("gpsStatus");
 const scanText = document.getElementById("scanText");
+const qrReaderElement = document.getElementById("qr-reader");
+
+let html5QrCode = null;
+let isProcessing = false;
+
+moduleStatus.textContent = "Ready";
+gpsStatus.textContent = "Required";
+scanText.textContent = "Press Start Scanner to scan a patrol checkpoint QR.";
 
 function showResult(type, html) {
   resultBox.className = `result-box ${type}`;
   resultBox.innerHTML = html;
 }
 
-if (!token) {
-  moduleStatus.textContent = "Invalid QR";
-  scanBtn.disabled = true;
-  scanText.textContent = "No patrol token was found in this QR link.";
-  showResult("error", "Invalid patrol QR. Token is missing.");
+function extractToken(decodedText) {
+  if (!decodedText) return null;
+
+  const cleanText = decodedText.trim();
+
+  if (cleanText.startsWith("PATROL:")) {
+    return cleanText.replace("PATROL:", "").trim();
+  }
+
+  try {
+    const url = new URL(cleanText);
+    const tokenFromUrl = url.searchParams.get("token");
+    if (tokenFromUrl) return tokenFromUrl.trim();
+  } catch (err) {
+    // Not a URL. Continue.
+  }
+
+  return cleanText;
 }
 
 function getCurrentPosition() {
@@ -286,7 +321,7 @@ function getCurrentPosition() {
         });
       },
       (error) => {
-        reject(error);
+        reject(new Error(error.message || "GPS permission was denied."));
       },
       {
         enableHighAccuracy: true,
@@ -297,72 +332,149 @@ function getCurrentPosition() {
   });
 }
 
-scanBtn.addEventListener("click", async () => {
-  if (!token) return;
+async function stopScanner() {
+  try {
+    if (html5QrCode) {
+      await html5QrCode.stop();
+      await html5QrCode.clear();
+    }
+  } catch (err) {
+    console.warn("Scanner stop warning:", err);
+  }
 
-  scanBtn.disabled = true;
-  scanBtn.textContent = "Recording...";
-  moduleStatus.textContent = "Recording";
+  qrReaderElement.style.display = "none";
+}
+
+async function recordPatrol(token) {
+  if (!token) {
+    throw new Error("Invalid patrol QR. Token is missing.");
+  }
+
+  moduleStatus.textContent = "GPS";
   gpsStatus.textContent = "Locating...";
+  scanBtn.textContent = "Recording...";
+  scanBtn.disabled = true;
+
+  const location = await getCurrentPosition();
+
+  gpsStatus.textContent = `${Math.round(location.accuracy)}m`;
+  moduleStatus.textContent = "Recording";
+
+  const response = await fetch(`${API_BASE_URL}/patrol/scan`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      token,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      accuracy: location.accuracy,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.status !== "ok") {
+    throw new Error(data.message || "Patrol scan failed.");
+  }
+
+  moduleStatus.textContent = "Recorded";
+  scanBtn.textContent = "Patrol Recorded";
+
+  const recordedAt = data.patrol?.patrol_time
+    ? new Date(data.patrol.patrol_time).toLocaleString("el-GR")
+    : new Date().toLocaleString("el-GR");
+
+  showResult(
+    "success",
+    `
+    <strong>Patrol Recorded Successfully</strong><br>
+    Checkpoint: ${data.point?.name || "-"}<br>
+    Site: ${data.point?.site_name || "-"}<br>
+    Time: ${recordedAt}<br>
+    GPS Accuracy: ${Math.round(location.accuracy)}m
+    `
+  );
+}
+
+async function startScanner() {
+  if (isProcessing) return;
+
+  resultBox.className = "result-box";
+  resultBox.innerHTML = "";
+
+  moduleStatus.textContent = "Scanner Active";
+  scanText.textContent = "Point the camera at the patrol checkpoint QR.";
+  scanBtn.textContent = "Scanner Running";
+  scanBtn.disabled = true;
+
+  qrReaderElement.style.display = "block";
+
+  html5QrCode = new Html5Qrcode("qr-reader");
 
   try {
-    const location = await getCurrentPosition();
-
-    gpsStatus.textContent = `${Math.round(location.accuracy)}m`;
-
-    const response = await fetch(`${API_BASE_URL}/patrol/scan`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    await html5QrCode.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 240, height: 240 },
       },
-      body: JSON.stringify({
-        token,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        accuracy: location.accuracy,
-      }),
-    });
+      async (decodedText) => {
+        if (isProcessing) return;
 
-    const data = await response.json();
+        isProcessing = true;
 
-    if (data.status !== "ok") {
-      throw new Error(data.message || "Patrol scan failed");
-    }
+        try {
+          const token = extractToken(decodedText);
 
-    moduleStatus.textContent = "Recorded";
-    scanBtn.textContent = "Patrol Recorded";
+          await stopScanner();
 
-    const recordedAt = data.patrol?.patrol_time
-      ? new Date(data.patrol.patrol_time).toLocaleString("el-GR")
-      : new Date().toLocaleString("el-GR");
+          moduleStatus.textContent = "QR Read";
+          scanText.textContent = "QR scanned. Recording patrol with GPS evidence.";
 
-    showResult(
-      "success",
-      `
-      <strong>Patrol Recorded Successfully</strong><br>
-      Checkpoint: ${data.point?.name || "-"}<br>
-      Site: ${data.point?.site_name || "-"}<br>
-      Time: ${recordedAt}<br>
-      GPS Accuracy: ${Math.round(location.accuracy)}m
-      `
+          await recordPatrol(token);
+        } catch (err) {
+          console.error(err);
+
+          await stopScanner();
+
+          moduleStatus.textContent = "Failed";
+          gpsStatus.textContent = "Failed";
+          scanBtn.disabled = false;
+          scanBtn.textContent = "Try Again";
+          isProcessing = false;
+
+          showResult(
+            "error",
+            `
+            <strong>Patrol scan failed</strong><br>
+            ${err.message || "Unknown error"}
+            `
+          );
+        }
+      },
+      () => {}
     );
   } catch (err) {
     console.error(err);
 
-    moduleStatus.textContent = "Failed";
-    gpsStatus.textContent = "Failed";
+    moduleStatus.textContent = "Camera Failed";
     scanBtn.disabled = false;
     scanBtn.textContent = "Try Again";
+    qrReaderElement.style.display = "none";
 
     showResult(
       "error",
       `
-      <strong>Patrol scan failed</strong><br>
-      ${err.message || "Unknown error"}
+      <strong>Camera could not start</strong><br>
+      ${err.message || "Camera permission denied or unavailable."}
       `
     );
   }
-});
+}
+
+scanBtn.addEventListener("click", startScanner);
 </script>
 
 </body>
