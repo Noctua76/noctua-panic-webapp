@@ -957,10 +957,18 @@ async function logoutGuard() {
     console.error("Guard logout backend error:", err);
   } finally {
     localStorage.removeItem(SESSION_KEY);
-    currentGuardSession = null;
-    stopGuardHeartbeat();
-    stopGuardLocationTracking();
-    showLoginScreen();
+localStorage.removeItem("guard_session");
+localStorage.removeItem("aegis-current-guard");
+localStorage.removeItem("aegis-guard-session");
+
+currentGuardSession = null;
+
+stopGuardHeartbeat();
+stopGuardLocationTracking();
+
+showLoginScreen();
+
+window.history.replaceState(null, "", "index.html");
   }
 }
 

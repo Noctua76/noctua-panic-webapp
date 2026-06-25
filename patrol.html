@@ -265,6 +265,29 @@ body{display:flex;justify-content:center;}
 
 <script>
 const API_BASE_URL = "https://noctua-panic-backend-production.up.railway.app";
+function getActiveGuardSession() {
+  const session =
+    localStorage.getItem("aegis_guard_session") ||
+    localStorage.getItem("guard_session") ||
+    localStorage.getItem("aegis-current-guard") ||
+    localStorage.getItem("aegis-guard-session");
+
+  return session;
+}
+
+function enforceGuardSession() {
+  const activeSession = getActiveGuardSession();
+
+  if (!activeSession) {
+    window.location.replace("index.html");
+  }
+}
+
+enforceGuardSession();
+
+window.addEventListener("pageshow", () => {
+  enforceGuardSession();
+});
 
 const scanBtn = document.getElementById("scanBtn");
 const resultBox = document.getElementById("resultBox");
