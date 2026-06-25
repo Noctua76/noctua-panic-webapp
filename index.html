@@ -941,6 +941,19 @@ function showLoginScreen() {
   if (loginScreen) loginScreen.classList.remove("hidden");
 }
 
+function enforceMainAppSession() {
+  const savedSession = loadSavedGuardSession();
+
+  if (!savedSession?.guard || !savedSession?.session) {
+    currentGuardSession = null;
+
+    stopGuardHeartbeat();
+    stopGuardLocationTracking();
+
+    showLoginScreen();
+  }
+}
+
 async function logoutGuard() {
   try {
     if (currentGuardSession?.guard?.id && currentGuardSession?.session?.id) {
@@ -1514,8 +1527,12 @@ window.addEventListener("focus", () => {
 });
 
 window.addEventListener("pageshow", () => {
+  enforceMainAppSession();
   checkSystemStatus();
-  sendGuardHeartbeat();
+
+  if (currentGuardSession?.guard && currentGuardSession?.session) {
+    sendGuardHeartbeat();
+  }
 });
 
 window.addEventListener("online", () => {
