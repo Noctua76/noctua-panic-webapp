@@ -1,37 +1,35 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Aegis Link Patrol V1</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Aegis Link Patrol V2</title>
 
 <style>
 :root{
   --bg:#03040a;
-  --bg-soft:#0c0f18;
-  --card:#11141f;
-  --accent:#ff4b4b;
-  --accent-soft:#ff8b6a;
-  --text:#f5f5fa;
-  --muted:#8e93a8;
-  --border:#262a36;
-  --radius:22px;
-  --max-width:460px;
-  --success:#22c55e;
-  --error:#ef4444;
+  --card:#10131f;
+  --card-soft:#171b2a;
+  --text:#f8fafc;
+  --muted:#9ca3af;
+  --border:rgba(255,255,255,.10);
+  --blue:#3b82f6;
+  --green:#22c55e;
+  --yellow:#f59e0b;
+  --red:#ef4444;
+  --max-width:480px;
 }
 
-*{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0}
 
-html,body{
-  min-height:100%;
-  background:radial-gradient(circle at top,#202642 0,#03040a 55%);
+body{
+  min-height:100vh;
+  background:radial-gradient(circle at top,#202642 0,#03040a 58%);
   color:var(--text);
   font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  display:flex;
+  justify-content:center;
 }
-
-body{display:flex;justify-content:center;}
 
 .app{
   width:100%;
@@ -40,111 +38,190 @@ body{display:flex;justify-content:center;}
   padding:18px 14px;
   display:flex;
   flex-direction:column;
-  gap:16px;
+  gap:14px;
 }
 
-.patrol-card{
-  margin-top:20px;
-  border-radius:28px;
-  background:
-    radial-gradient(circle at 0 0,rgba(255,255,255,.05),transparent 55%),
-    linear-gradient(145deg,#080914,#131627);
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 28px 60px rgba(0,0,0,.9);
-  padding:26px 20px;
-  display:flex;
-  flex-direction:column;
-  gap:18px;
+.header{
+  padding:18px;
+  border-radius:26px;
+  background:linear-gradient(145deg,#080914,#14182a);
+  border:1px solid var(--border);
+  box-shadow:0 24px 55px rgba(0,0,0,.75);
 }
 
-.patrol-header{text-align:center;display:flex;flex-direction:column;gap:6px;}
-
-.version-pill{
-  align-self:center;
-  padding:4px 10px;
+.version{
+  display:inline-flex;
+  padding:5px 12px;
   border-radius:999px;
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:.08em;
   background:rgba(59,130,246,.14);
   border:1px solid rgba(96,165,250,.45);
   color:#bfdbfe;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.12em;
 }
 
-.patrol-title{font-size:24px;letter-spacing:.08em;}
+h1{
+  margin-top:12px;
+  font-size:28px;
+  letter-spacing:.04em;
+}
 
-.patrol-subtitle{
-  font-size:13px;
+.subtitle{
+  margin-top:6px;
   color:var(--muted);
+  font-size:13px;
   line-height:1.45;
 }
 
-.patrol-status{
-  border-radius:20px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.08);
-  padding:14px;
-  display:flex;
-  flex-direction:column;
+.guard-card{
+  margin-top:14px;
+  display:grid;
   gap:8px;
-}
-
-.status-row{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
   font-size:13px;
   color:var(--muted);
 }
 
-.status-row strong{
+.row{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+
+.row strong{
   color:var(--text);
   text-align:right;
 }
 
-.scan-box{
-  border-radius:24px;
-  background:rgba(255,255,255,.03);
-  border:1px dashed rgba(255,255,255,.18);
-  padding:26px 18px;
-  text-align:center;
+.toolbar{
+  display:flex;
+  gap:10px;
+}
+
+.btn{
+  width:100%;
+  border:none;
+  border-radius:999px;
+  padding:12px 14px;
+  cursor:pointer;
+  color:white;
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+.btn-blue{
+  background:linear-gradient(145deg,#2563eb,#60a5fa);
+  box-shadow:0 0 18px rgba(37,99,235,.45);
+}
+
+.btn-ghost{
+  background:rgba(255,255,255,.04);
+  color:var(--muted);
+  border:1px solid var(--border);
+}
+
+.btn:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+
+.section-title{
+  margin-top:4px;
+  font-size:12px;
+  color:var(--muted);
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.patrol-list{
   display:flex;
   flex-direction:column;
   gap:12px;
 }
 
-.scan-icon{font-size:42px;}
+.patrol-item{
+  border-radius:22px;
+  padding:16px;
+  background:rgba(255,255,255,.045);
+  border:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
 
-.scan-title{
+.patrol-item.active{
+  border-color:rgba(59,130,246,.75);
+  box-shadow:0 0 0 1px rgba(59,130,246,.25),0 0 24px rgba(59,130,246,.18);
+}
+
+.patrol-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.checkpoint{
   font-size:18px;
-  font-weight:800;
-  letter-spacing:.06em;
+  font-weight:900;
 }
 
-.scan-text{
-  font-size:13px;
+.time{
+  margin-top:3px;
   color:var(--muted);
-  line-height:1.45;
+  font-size:13px;
 }
 
-.scan-btn{
-  margin-top:8px;
-  width:100%;
-  padding:13px 16px;
+.badge{
+  padding:5px 10px;
   border-radius:999px;
-  border:none;
-  cursor:pointer;
-  background:linear-gradient(145deg,#2563eb,#60a5fa);
-  color:white;
-  font-weight:800;
-  letter-spacing:.08em;
+  font-size:11px;
+  font-weight:900;
   text-transform:uppercase;
-  box-shadow:0 0 18px rgba(37,99,235,.55);
+  white-space:nowrap;
 }
 
-.scan-btn:disabled{
-  opacity:.55;
-  cursor:not-allowed;
+.badge.scheduled{background:rgba(59,130,246,.14);color:#bfdbfe;border:1px solid rgba(59,130,246,.4)}
+.badge.due_soon{background:rgba(245,158,11,.15);color:#fde68a;border:1px solid rgba(245,158,11,.45)}
+.badge.overdue{background:rgba(239,68,68,.15);color:#fecaca;border:1px solid rgba(239,68,68,.45)}
+.badge.missed{background:rgba(127,29,29,.35);color:#fecaca;border:1px solid rgba(239,68,68,.38)}
+.badge.completed{background:rgba(34,197,94,.15);color:#bbf7d0;border:1px solid rgba(34,197,94,.45)}
+
+.meta{
+  display:grid;
+  gap:6px;
+  font-size:12px;
+  color:var(--muted);
+}
+
+.scan-action{
+  margin-top:2px;
+}
+
+.scan-panel{
+  display:none;
+  border-radius:24px;
+  background:rgba(255,255,255,.04);
+  border:1px dashed rgba(255,255,255,.18);
+  padding:16px;
+  text-align:center;
+  gap:12px;
+  flex-direction:column;
+}
+
+.scan-panel.show{
+  display:flex;
+}
+
+#qr-reader{
+  display:none;
+  width:100%;
+  overflow:hidden;
+  border-radius:18px;
+  border:1px solid var(--border);
+  background:#000;
 }
 
 .result-box{
@@ -153,7 +230,7 @@ body{display:flex;justify-content:center;}
   padding:14px;
   font-size:13px;
   line-height:1.5;
-  border:1px solid rgba(255,255,255,.1);
+  border:1px solid var(--border);
   background:rgba(255,255,255,.04);
 }
 
@@ -169,93 +246,76 @@ body{display:flex;justify-content:center;}
   color:#fecaca;
 }
 
-.back-btn{
+.empty{
+  border-radius:22px;
+  padding:20px;
+  text-align:center;
+  color:var(--muted);
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
+}
+
+.back{
+  margin-top:auto;
   display:block;
   text-align:center;
-  padding:12px 16px;
+  padding:13px 16px;
   border-radius:999px;
-  text-decoration:none;
-  border:1px solid rgba(255,255,255,.14);
   color:var(--muted);
-  background:rgba(255,255,255,.03);
+  text-decoration:none;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
   font-size:13px;
-  font-weight:700;
+  font-weight:800;
 }
 
 .footer{
-  margin-top:auto;
   text-align:center;
-  font-size:11px;
   color:var(--muted);
+  font-size:11px;
+  padding-bottom:6px;
 }
-
-#qr-reader{
-  display:none;
-  width:100%;
-  overflow:hidden;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.14);
-  background:#000;
-}
-
-#qr-reader video{
-  border-radius:18px;
-}
-
 </style>
+
 <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 
 <body>
-
 <div class="app">
 
-  <section class="patrol-card">
+  <header class="header">
+    <div class="version">QR PATROL V2</div>
+    <h1>📷 Patrol Board</h1>
+    <p class="subtitle">
+      Τα patrols του τρέχοντος 24ώρου εμφανίζονται από το backend.
+      Το scan ενεργοποιείται μόνο μέσα στο επιτρεπόμενο χρονικό παράθυρο.
+    </p>
 
-    <div class="patrol-header">
-      <div class="version-pill">QR PATROL V.1</div>
-      <h1 class="patrol-title">📷 QR Patrol</h1>
-      <p class="patrol-subtitle">
-        Scan assigned checkpoints during patrol rounds.
-      </p>
+    <div class="guard-card">
+      <div class="row"><span>Guard</span><strong id="guardName">-</strong></div>
+      <div class="row"><span>Site</span><strong id="siteName">-</strong></div>
+      <div class="row"><span>Session</span><strong id="sessionId">-</strong></div>
+      <div class="row"><span>Status</span><strong id="moduleStatus">Loading</strong></div>
     </div>
+  </header>
 
-    <div class="patrol-status">
-      <div class="status-row">
-        <span>Module Status</span>
-        <strong id="moduleStatus">Ready</strong>
-      </div>
-      <div class="status-row">
-        <span>Mode</span>
-        <strong>Checkpoint Scan</strong>
-      </div>
-      <div class="status-row">
-        <span>GPS Evidence</span>
-        <strong id="gpsStatus">Required</strong>
-      </div>
-    </div>
+  <div class="toolbar">
+    <button class="btn btn-blue" id="refreshBtn" type="button">Refresh</button>
+    <button class="btn btn-ghost" id="stopBtn" type="button" disabled>Stop Scan</button>
+  </div>
 
-    <div class="scan-box">
-      <div class="scan-icon">▦</div>
-      <div class="scan-title">Scan Patrol Checkpoint</div>
-      <p class="scan-text" id="scanText">
-        Press the button below to record this patrol checkpoint.
-      </p>
+  <div class="section-title">Today’s Patrol Queue</div>
+  <main class="patrol-list" id="patrolList"></main>
 
-      <button class="scan-btn" type="button" id="scanBtn">
-  Start Scanner
-</button>
-
-<div id="qr-reader"></div>
-
-<div id="resultBox" class="result-box"></div>
-    </div>
-
-    <a href="index.html" class="back-btn">
-      ← Back to Alert System
-    </a>
-
+  <section class="scan-panel" id="scanPanel">
+    <strong id="selectedTitle">Selected Patrol</strong>
+    <p class="subtitle" id="selectedDetails">-</p>
+    <button class="btn btn-blue" id="startScanBtn" type="button">Start Scanner</button>
+    <div id="qr-reader"></div>
+    <div id="resultBox" class="result-box"></div>
   </section>
+
+  <a href="index.html" class="back">← Back to Alert System</a>
 
   <footer class="footer">
     © Noctua Core – Aegis Link Patrol Module
@@ -265,47 +325,115 @@ body{display:flex;justify-content:center;}
 
 <script>
 const API_BASE_URL = "https://noctua-panic-backend-production.up.railway.app";
-function getActiveGuardSession() {
-  const session =
-    localStorage.getItem("aegis_guard_session") ||
-    localStorage.getItem("guard_session") ||
-    localStorage.getItem("aegis-current-guard") ||
-    localStorage.getItem("aegis-guard-session");
+const SESSION_KEY = "aegis_guard_session";
 
-  return session;
-}
-
-function enforceGuardSession() {
-  const activeSession = getActiveGuardSession();
-
-  if (!activeSession) {
-    window.location.replace("index.html");
-  }
-}
-
-enforceGuardSession();
-
-window.addEventListener("pageshow", () => {
-  enforceGuardSession();
-});
-
-const scanBtn = document.getElementById("scanBtn");
-const resultBox = document.getElementById("resultBox");
-const moduleStatus = document.getElementById("moduleStatus");
-const gpsStatus = document.getElementById("gpsStatus");
-const scanText = document.getElementById("scanText");
+const guardNameEl = document.getElementById("guardName");
+const siteNameEl = document.getElementById("siteName");
+const sessionIdEl = document.getElementById("sessionId");
+const moduleStatusEl = document.getElementById("moduleStatus");
+const patrolListEl = document.getElementById("patrolList");
+const refreshBtn = document.getElementById("refreshBtn");
+const stopBtn = document.getElementById("stopBtn");
+const scanPanel = document.getElementById("scanPanel");
+const selectedTitle = document.getElementById("selectedTitle");
+const selectedDetails = document.getElementById("selectedDetails");
+const startScanBtn = document.getElementById("startScanBtn");
 const qrReaderElement = document.getElementById("qr-reader");
+const resultBox = document.getElementById("resultBox");
 
+let guardSession = null;
+let patrols = [];
+let selectedPatrol = null;
 let html5QrCode = null;
 let isProcessing = false;
 
-moduleStatus.textContent = "Ready";
-gpsStatus.textContent = "Required";
-scanText.textContent = "Press Start Scanner to scan a patrol checkpoint QR.";
+function loadSession() {
+  try {
+    const saved = localStorage.getItem(SESSION_KEY);
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch {
+    return null;
+  }
+}
+
+function enforceSession() {
+  guardSession = loadSession();
+
+  if (!guardSession?.guard?.id || !guardSession?.session?.id) {
+    window.location.replace("index.html");
+    return false;
+  }
+
+  guardNameEl.textContent =
+    guardSession.guard.full_name ||
+    guardSession.guard.username ||
+    "-";
+
+  sessionIdEl.textContent = guardSession.session.id;
+
+  return true;
+}
+
+function formatTime(value) {
+  if (!value) return "-";
+
+  return new Date(value).toLocaleString("el-GR", {
+    timeZone: "Europe/Athens",
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function labelStatus(status) {
+  const map = {
+    scheduled: "Scheduled",
+    due_soon: "Due Soon",
+    overdue: "Overdue",
+    missed: "Missed",
+    completed: "Completed",
+  };
+
+  return map[status] || status || "-";
+}
+
+function getCountdownText(patrol) {
+  if (!patrol) return "-";
+
+  if (patrol.status === "scheduled") {
+    const mins = Math.abs(Number(patrol.minutes_delta || 0));
+    return `Opens in περίπου ${Math.max(mins - Number(patrol.reminder_minutes_before || 5), 0)} min`;
+  }
+
+  if (patrol.status === "due_soon") {
+    return "Scan window is open";
+  }
+
+  if (patrol.status === "overdue") {
+    return "Scan allowed before Missed";
+  }
+
+  if (patrol.status === "missed") {
+    return "Scan closed";
+  }
+
+  if (patrol.status === "completed") {
+    return "Already completed";
+  }
+
+  return "-";
+}
 
 function showResult(type, html) {
   resultBox.className = `result-box ${type}`;
   resultBox.innerHTML = html;
+}
+
+function clearResult() {
+  resultBox.className = "result-box";
+  resultBox.innerHTML = "";
 }
 
 function extractToken(decodedText) {
@@ -321,9 +449,7 @@ function extractToken(decodedText) {
     const url = new URL(cleanText);
     const tokenFromUrl = url.searchParams.get("token");
     if (tokenFromUrl) return tokenFromUrl.trim();
-  } catch (err) {
-    // Not a URL. Continue.
-  }
+  } catch {}
 
   return cleanText;
 }
@@ -355,6 +481,138 @@ function getCurrentPosition() {
   });
 }
 
+async function loadPatrolBoard() {
+  if (!enforceSession()) return;
+
+  moduleStatusEl.textContent = "Loading";
+  refreshBtn.disabled = true;
+
+  try {
+    const guardId = guardSession.guard.id;
+    const sessionId = guardSession.session.id;
+
+    const response = await fetch(
+      `${API_BASE_URL}/guard/patrols/board?guard_id=${guardId}&session_id=${sessionId}`,
+      { cache: "no-store" }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok || data.status !== "ok") {
+      throw new Error(data.message || "Failed loading patrol board");
+    }
+
+    patrols = data.patrols || [];
+
+    siteNameEl.textContent = data.site?.name || guardSession.guard.site_id || "-";
+    moduleStatusEl.textContent = "Ready";
+
+    renderPatrols();
+  } catch (err) {
+    console.error(err);
+    moduleStatusEl.textContent = "Failed";
+
+    patrolListEl.innerHTML = `
+      <div class="empty">
+        Failed loading patrol board.<br>
+        ${err.message || "Unknown error"}
+      </div>
+    `;
+  } finally {
+    refreshBtn.disabled = false;
+  }
+}
+
+function renderPatrols() {
+  if (!patrols.length) {
+    patrolListEl.innerHTML = `
+      <div class="empty">
+        No patrols found for the current 24h period.
+      </div>
+    `;
+    return;
+  }
+
+  patrolListEl.innerHTML = "";
+
+  patrols.forEach((patrol, index) => {
+    const item = document.createElement("article");
+    item.className = "patrol-item";
+    item.dataset.index = index;
+
+    if (
+      selectedPatrol &&
+      selectedPatrol.schedule_id === patrol.schedule_id &&
+      selectedPatrol.scheduled_at === patrol.scheduled_at &&
+      selectedPatrol.point_id === patrol.point_id
+    ) {
+      item.classList.add("active");
+    }
+
+    const canScan = patrol.scan_enabled === true;
+
+    item.innerHTML = `
+      <div class="patrol-top">
+        <div>
+          <div class="checkpoint">${patrol.checkpoint || "-"}</div>
+          <div class="time">${formatTime(patrol.scheduled_at)}</div>
+        </div>
+        <div class="badge ${patrol.status}">${labelStatus(patrol.status)}</div>
+      </div>
+
+      <div class="meta">
+        <div class="row">
+          <span>Type</span>
+          <strong>${patrol.schedule_type === "manual" ? "Manual" : "Recurring"}</strong>
+        </div>
+        <div class="row">
+          <span>Scan Opens</span>
+          <strong>${formatTime(patrol.scan_available_from)}</strong>
+        </div>
+        <div class="row">
+          <span>Scan Closes</span>
+          <strong>${formatTime(patrol.scan_available_until)}</strong>
+        </div>
+        <div class="row">
+          <span>Window</span>
+          <strong>${getCountdownText(patrol)}</strong>
+        </div>
+      </div>
+
+      <div class="scan-action">
+        <button class="btn ${canScan ? "btn-blue" : "btn-ghost"}" type="button" ${canScan ? "" : "disabled"}>
+          ${canScan ? "Select & Scan" : "Scan Disabled"}
+        </button>
+      </div>
+    `;
+
+    const button = item.querySelector("button");
+    if (canScan) {
+      button.addEventListener("click", () => selectPatrol(patrol));
+    }
+
+    patrolListEl.appendChild(item);
+  });
+}
+
+function selectPatrol(patrol) {
+  selectedPatrol = patrol;
+  clearResult();
+
+  scanPanel.classList.add("show");
+
+  selectedTitle.textContent = `${patrol.checkpoint || "-"} · ${labelStatus(patrol.status)}`;
+  selectedDetails.textContent =
+    `Scheduled: ${formatTime(patrol.scheduled_at)} · Closes: ${formatTime(patrol.scan_available_until)}`;
+
+  startScanBtn.disabled = false;
+  startScanBtn.textContent = "Start Scanner";
+
+  renderPatrols();
+
+  scanPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 async function stopScanner() {
   try {
     if (html5QrCode) {
@@ -365,35 +623,47 @@ async function stopScanner() {
     console.warn("Scanner stop warning:", err);
   }
 
+  html5QrCode = null;
   qrReaderElement.style.display = "none";
+  stopBtn.disabled = true;
 }
 
-async function recordPatrol(token) {
-  if (!token) {
+async function submitScan(scannedQrToken) {
+  if (!selectedPatrol) {
+    throw new Error("No patrol selected.");
+  }
+
+  if (!scannedQrToken) {
     throw new Error("Invalid patrol QR. Token is missing.");
   }
 
-  moduleStatus.textContent = "GPS";
-  gpsStatus.textContent = "Locating...";
-  scanBtn.textContent = "Recording...";
-  scanBtn.disabled = true;
+  moduleStatusEl.textContent = "GPS";
+  startScanBtn.textContent = "Getting GPS...";
+  startScanBtn.disabled = true;
 
   const location = await getCurrentPosition();
 
-  gpsStatus.textContent = `${Math.round(location.accuracy)}m`;
-  moduleStatus.textContent = "Recording";
+  moduleStatusEl.textContent = "Recording";
+  startScanBtn.textContent = "Recording...";
+
+  const payload = {
+    schedule_id: selectedPatrol.schedule_id,
+    schedule_type: selectedPatrol.schedule_type,
+    scheduled_at: selectedPatrol.scheduled_at,
+    guard_id: guardSession.guard.id,
+    session_id: guardSession.session.id,
+    qr_token: scannedQrToken,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    accuracy: location.accuracy,
+  };
 
   const response = await fetch(`${API_BASE_URL}/patrol/scan`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      token,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      accuracy: location.accuracy,
-    }),
+    body: JSON.stringify(payload),
   });
 
   const data = await response.json();
@@ -402,35 +672,42 @@ async function recordPatrol(token) {
     throw new Error(data.message || "Patrol scan failed.");
   }
 
-  moduleStatus.textContent = "Recorded";
-  scanBtn.textContent = "Patrol Recorded";
+  moduleStatusEl.textContent = "Completed";
+  startScanBtn.textContent = "Completed";
+  startScanBtn.disabled = true;
 
   const recordedAt = data.patrol?.patrol_time
-    ? new Date(data.patrol.patrol_time).toLocaleString("el-GR")
-    : new Date().toLocaleString("el-GR");
+    ? new Date(data.patrol.patrol_time).toLocaleString("el-GR", {
+        timeZone: "Europe/Athens",
+      })
+    : new Date().toLocaleString("el-GR", {
+        timeZone: "Europe/Athens",
+      });
 
   showResult(
     "success",
     `
-    <strong>Patrol Recorded Successfully</strong><br>
-    Checkpoint: ${data.point?.name || "-"}<br>
-    Site: ${data.point?.site_name || "-"}<br>
-    Time: ${recordedAt}<br>
+    <strong>Patrol Completed Successfully</strong><br>
+    Checkpoint: ${data.checkpoint?.name || selectedPatrol.checkpoint || "-"}<br>
+    Scheduled: ${formatTime(selectedPatrol.scheduled_at)}<br>
+    Recorded: ${recordedAt}<br>
     GPS Accuracy: ${Math.round(location.accuracy)}m
     `
   );
+
+  await loadPatrolBoard();
 }
 
 async function startScanner() {
-  if (isProcessing) return;
+  if (!selectedPatrol || isProcessing) return;
 
-  resultBox.className = "result-box";
-  resultBox.innerHTML = "";
+  clearResult();
 
-  moduleStatus.textContent = "Scanner Active";
-  scanText.textContent = "Point the camera at the patrol checkpoint QR.";
-  scanBtn.textContent = "Scanner Running";
-  scanBtn.disabled = true;
+  isProcessing = false;
+  moduleStatusEl.textContent = "Scanner Active";
+  startScanBtn.textContent = "Scanner Running";
+  startScanBtn.disabled = true;
+  stopBtn.disabled = false;
 
   qrReaderElement.style.display = "block";
 
@@ -453,19 +730,15 @@ async function startScanner() {
 
           await stopScanner();
 
-          moduleStatus.textContent = "QR Read";
-          scanText.textContent = "QR scanned. Recording patrol with GPS evidence.";
-
-          await recordPatrol(token);
+          await submitScan(token);
         } catch (err) {
           console.error(err);
 
           await stopScanner();
 
-          moduleStatus.textContent = "Failed";
-          gpsStatus.textContent = "Failed";
-          scanBtn.disabled = false;
-          scanBtn.textContent = "Try Again";
+          moduleStatusEl.textContent = "Failed";
+          startScanBtn.disabled = false;
+          startScanBtn.textContent = "Try Again";
           isProcessing = false;
 
           showResult(
@@ -482,10 +755,11 @@ async function startScanner() {
   } catch (err) {
     console.error(err);
 
-    moduleStatus.textContent = "Camera Failed";
-    scanBtn.disabled = false;
-    scanBtn.textContent = "Try Again";
+    moduleStatusEl.textContent = "Camera Failed";
+    startScanBtn.disabled = false;
+    startScanBtn.textContent = "Try Again";
     qrReaderElement.style.display = "none";
+    stopBtn.disabled = true;
 
     showResult(
       "error",
@@ -497,7 +771,24 @@ async function startScanner() {
   }
 }
 
-scanBtn.addEventListener("click", startScanner);
+refreshBtn.addEventListener("click", loadPatrolBoard);
+startScanBtn.addEventListener("click", startScanner);
+stopBtn.addEventListener("click", stopScanner);
+
+window.addEventListener("pageshow", () => {
+  enforceSession();
+  loadPatrolBoard();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    loadPatrolBoard();
+  }
+});
+
+enforceSession();
+loadPatrolBoard();
+setInterval(loadPatrolBoard, 30000);
 </script>
 
 </body>
