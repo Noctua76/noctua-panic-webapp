@@ -9,13 +9,13 @@
 :root{
   --bg:#03040a;
   --card:#10131f;
-  --card-soft:#171b2a;
+  --card2:#151927;
   --text:#f8fafc;
   --muted:#9ca3af;
   --border:rgba(255,255,255,.10);
   --blue:#3b82f6;
   --green:#22c55e;
-  --yellow:#f59e0b;
+  --amber:#f59e0b;
   --red:#ef4444;
   --max-width:480px;
 }
@@ -41,45 +41,140 @@ body{
   gap:14px;
 }
 
-.header{
-  padding:18px;
+.card{
   border-radius:26px;
   background:linear-gradient(145deg,#080914,#14182a);
   border:1px solid var(--border);
-  box-shadow:0 24px 55px rgba(0,0,0,.75);
+  box-shadow:0 24px 55px rgba(0,0,0,.72);
+  padding:18px;
+}
+
+.topline{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
 }
 
 .version{
-  display:inline-flex;
   padding:5px 12px;
   border-radius:999px;
   background:rgba(59,130,246,.14);
   border:1px solid rgba(96,165,250,.45);
   color:#bfdbfe;
   font-size:11px;
-  font-weight:800;
+  font-weight:900;
   letter-spacing:.12em;
+}
+
+.auto{
+  color:var(--muted);
+  font-size:11px;
 }
 
 h1{
   margin-top:12px;
-  font-size:28px;
-  letter-spacing:.04em;
+  font-size:30px;
+  letter-spacing:.03em;
 }
 
 .subtitle{
-  margin-top:6px;
+  margin-top:7px;
   color:var(--muted);
   font-size:13px;
   line-height:1.45;
 }
 
-.guard-card{
-  margin-top:14px;
+.info-grid{
+  margin-top:16px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.info-box{
+  border-radius:18px;
+  background:rgba(255,255,255,.045);
+  border:1px solid var(--border);
+  padding:12px;
+}
+
+.info-label{
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.info-value{
+  margin-top:5px;
+  font-size:14px;
+  font-weight:900;
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+
+.summary-box{
+  border-radius:18px;
+  background:rgba(255,255,255,.045);
+  border:1px solid var(--border);
+  padding:10px 8px;
+  text-align:center;
+}
+
+.summary-box strong{
+  display:block;
+  font-size:20px;
+}
+
+.summary-box span{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:10px;
+  text-transform:uppercase;
+}
+
+.hero{
+  border-radius:30px;
+  padding:22px;
+  background:
+    radial-gradient(circle at 100% 0,rgba(59,130,246,.22),transparent 45%),
+    linear-gradient(145deg,#0a0d18,#151a2c);
+  border:1px solid rgba(96,165,250,.35);
+  box-shadow:0 0 0 1px rgba(59,130,246,.12),0 24px 60px rgba(0,0,0,.75);
+}
+
+.hero-kicker{
+  color:#bfdbfe;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.hero-title{
+  margin-top:12px;
+  font-size:28px;
+  font-weight:950;
+}
+
+.hero-time{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:15px;
+}
+
+.hero-meta{
+  margin-top:16px;
   display:grid;
   gap:8px;
-  font-size:13px;
   color:var(--muted);
+  font-size:13px;
 }
 
 .row{
@@ -93,26 +188,22 @@ h1{
   text-align:right;
 }
 
-.toolbar{
-  display:flex;
-  gap:10px;
-}
-
 .btn{
   width:100%;
   border:none;
   border-radius:999px;
-  padding:12px 14px;
+  padding:13px 15px;
   cursor:pointer;
   color:white;
-  font-weight:800;
+  font-weight:900;
   letter-spacing:.06em;
   text-transform:uppercase;
 }
 
 .btn-blue{
+  margin-top:16px;
   background:linear-gradient(145deg,#2563eb,#60a5fa);
-  box-shadow:0 0 18px rgba(37,99,235,.45);
+  box-shadow:0 0 20px rgba(37,99,235,.45);
 }
 
 .btn-ghost{
@@ -127,33 +218,40 @@ h1{
   box-shadow:none;
 }
 
-.section-title{
-  margin-top:4px;
-  font-size:12px;
-  color:var(--muted);
-  letter-spacing:.12em;
-  text-transform:uppercase;
-}
-
-.patrol-list{
+.section{
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:10px;
+}
+
+.section-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:var(--muted);
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin-top:4px;
+}
+
+.toggle{
+  background:none;
+  border:none;
+  color:#bfdbfe;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
 }
 
 .patrol-item{
   border-radius:22px;
-  padding:16px;
+  padding:15px;
   background:rgba(255,255,255,.045);
   border:1px solid var(--border);
   display:flex;
   flex-direction:column;
-  gap:12px;
-}
-
-.patrol-item.active{
-  border-color:rgba(59,130,246,.75);
-  box-shadow:0 0 0 1px rgba(59,130,246,.25),0 0 24px rgba(59,130,246,.18);
+  gap:10px;
 }
 
 .patrol-top{
@@ -165,20 +263,20 @@ h1{
 
 .checkpoint{
   font-size:18px;
-  font-weight:900;
+  font-weight:950;
 }
 
 .time{
-  margin-top:3px;
   color:var(--muted);
   font-size:13px;
+  margin-top:3px;
 }
 
 .badge{
   padding:5px 10px;
   border-radius:999px;
   font-size:11px;
-  font-weight:900;
+  font-weight:950;
   text-transform:uppercase;
   white-space:nowrap;
 }
@@ -189,15 +287,14 @@ h1{
 .badge.missed{background:rgba(127,29,29,.35);color:#fecaca;border:1px solid rgba(239,68,68,.38)}
 .badge.completed{background:rgba(34,197,94,.15);color:#bbf7d0;border:1px solid rgba(34,197,94,.45)}
 
-.meta{
-  display:grid;
-  gap:6px;
-  font-size:12px;
+.empty{
+  border-radius:20px;
+  padding:16px;
+  text-align:center;
   color:var(--muted);
-}
-
-.scan-action{
-  margin-top:2px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  font-size:13px;
 }
 
 .scan-panel{
@@ -246,17 +343,14 @@ h1{
   color:#fecaca;
 }
 
-.empty{
-  border-radius:22px;
-  padding:20px;
-  text-align:center;
-  color:var(--muted);
-  background:rgba(255,255,255,.04);
-  border:1px solid var(--border);
+.footer-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:auto;
 }
 
 .back{
-  margin-top:auto;
   display:block;
   text-align:center;
   padding:13px 16px;
@@ -266,7 +360,7 @@ h1{
   background:rgba(255,255,255,.04);
   border:1px solid var(--border);
   font-size:13px;
-  font-weight:800;
+  font-weight:900;
 }
 
 .footer{
@@ -283,44 +377,88 @@ h1{
 <body>
 <div class="app">
 
-  <header class="header">
-    <div class="version">QR PATROL V2</div>
+  <header class="card">
+    <div class="topline">
+      <div class="version">QR PATROL V2</div>
+      <div class="auto" id="autoRefreshLabel">Auto refresh · 30s</div>
+    </div>
+
     <h1>📷 Patrol Board</h1>
     <p class="subtitle">
-      Τα patrols του τρέχοντος 24ώρου εμφανίζονται από το backend.
-      Το scan ενεργοποιείται μόνο μέσα στο επιτρεπόμενο χρονικό παράθυρο.
+      Επιχειρησιακή εικόνα περιπολιών 24ώρου. Το scan ενεργοποιείται μόνο στο επιτρεπόμενο χρονικό παράθυρο.
     </p>
 
-    <div class="guard-card">
-      <div class="row"><span>Guard</span><strong id="guardName">-</strong></div>
-      <div class="row"><span>Site</span><strong id="siteName">-</strong></div>
-      <div class="row"><span>Session</span><strong id="sessionId">-</strong></div>
-      <div class="row"><span>Status</span><strong id="moduleStatus">Loading</strong></div>
+    <div class="info-grid">
+      <div class="info-box">
+        <div class="info-label">Guard</div>
+        <div class="info-value" id="guardName">-</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Site</div>
+        <div class="info-value" id="siteName">-</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Session</div>
+        <div class="info-value" id="sessionId">-</div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Status</div>
+        <div class="info-value" id="moduleStatus">Loading</div>
+      </div>
     </div>
   </header>
 
-  <div class="toolbar">
-    <button class="btn btn-blue" id="refreshBtn" type="button">Refresh</button>
-    <button class="btn btn-ghost" id="stopBtn" type="button" disabled>Stop Scan</button>
-  </div>
+  <section class="summary" id="summary"></section>
 
-  <div class="section-title">Today’s Patrol Queue</div>
-  <main class="patrol-list" id="patrolList"></main>
+  <section class="hero" id="hero"></section>
 
   <section class="scan-panel" id="scanPanel">
     <strong id="selectedTitle">Selected Patrol</strong>
     <p class="subtitle" id="selectedDetails">-</p>
     <button class="btn btn-blue" id="startScanBtn" type="button">Start Scanner</button>
+    <button class="btn btn-ghost" id="stopBtn" type="button" disabled>Stop Scanner</button>
     <div id="qr-reader"></div>
     <div id="resultBox" class="result-box"></div>
   </section>
 
-  <a href="index.html" class="back">← Back to Alert System</a>
+  <section class="section">
+    <div class="section-head">
+      <span>Active Now</span>
+      <span id="activeCount">0</span>
+    </div>
+    <div id="activeList"></div>
+  </section>
 
-  <footer class="footer">
-    © Noctua Core – Aegis Link Patrol Module
-  </footer>
+  <section class="section">
+    <div class="section-head">
+      <span>Upcoming</span>
+      <span id="upcomingCount">0</span>
+    </div>
+    <div id="upcomingList"></div>
+  </section>
 
+  <section class="section">
+    <div class="section-head">
+      <span>Completed</span>
+      <button class="toggle" id="completedToggle" type="button">Show</button>
+    </div>
+    <div id="completedList" style="display:none"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span>Missed</span>
+      <button class="toggle" id="missedToggle" type="button">Show</button>
+    </div>
+    <div id="missedList" style="display:none"></div>
+  </section>
+
+  <div class="footer-actions">
+    <a href="index.html" class="back">← Back</a>
+    <button class="btn btn-ghost" id="manualRefreshBtn" type="button">↻ Refresh</button>
+  </div>
+
+  <footer class="footer">© Noctua Core – Aegis Link Patrol Module</footer>
 </div>
 
 <script>
@@ -331,296 +469,353 @@ const guardNameEl = document.getElementById("guardName");
 const siteNameEl = document.getElementById("siteName");
 const sessionIdEl = document.getElementById("sessionId");
 const moduleStatusEl = document.getElementById("moduleStatus");
-const patrolListEl = document.getElementById("patrolList");
-const refreshBtn = document.getElementById("refreshBtn");
-const stopBtn = document.getElementById("stopBtn");
+const summaryEl = document.getElementById("summary");
+const heroEl = document.getElementById("hero");
+const activeListEl = document.getElementById("activeList");
+const upcomingListEl = document.getElementById("upcomingList");
+const completedListEl = document.getElementById("completedList");
+const missedListEl = document.getElementById("missedList");
+const activeCountEl = document.getElementById("activeCount");
+const upcomingCountEl = document.getElementById("upcomingCount");
+const completedToggle = document.getElementById("completedToggle");
+const missedToggle = document.getElementById("missedToggle");
 const scanPanel = document.getElementById("scanPanel");
 const selectedTitle = document.getElementById("selectedTitle");
 const selectedDetails = document.getElementById("selectedDetails");
 const startScanBtn = document.getElementById("startScanBtn");
+const stopBtn = document.getElementById("stopBtn");
 const qrReaderElement = document.getElementById("qr-reader");
 const resultBox = document.getElementById("resultBox");
+const manualRefreshBtn = document.getElementById("manualRefreshBtn");
+const autoRefreshLabel = document.getElementById("autoRefreshLabel");
 
 let guardSession = null;
 let patrols = [];
 let selectedPatrol = null;
 let html5QrCode = null;
 let isProcessing = false;
+let lastCompletedMessage = null;
 
-function loadSession() {
-  try {
+function loadSession(){
+  try{
     const saved = localStorage.getItem(SESSION_KEY);
-    if (!saved) return null;
-    return JSON.parse(saved);
-  } catch {
+    return saved ? JSON.parse(saved) : null;
+  }catch{
     return null;
   }
 }
 
-function enforceSession() {
+function enforceSession(){
   guardSession = loadSession();
 
-  if (!guardSession?.guard?.id || !guardSession?.session?.id) {
+  if(!guardSession?.guard?.id || !guardSession?.session?.id){
     window.location.replace("index.html");
     return false;
   }
 
-  guardNameEl.textContent =
-    guardSession.guard.full_name ||
-    guardSession.guard.username ||
-    "-";
-
+  guardNameEl.textContent = guardSession.guard.full_name || guardSession.guard.username || "-";
   sessionIdEl.textContent = guardSession.session.id;
-
   return true;
 }
 
-function formatTime(value) {
-  if (!value) return "-";
-
-  return new Date(value).toLocaleString("el-GR", {
-    timeZone: "Europe/Athens",
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
+function formatTime(value){
+  if(!value) return "-";
+  return new Date(value).toLocaleString("el-GR",{
+    timeZone:"Europe/Athens",
+    hour:"2-digit",
+    minute:"2-digit",
+    day:"2-digit",
+    month:"2-digit"
   });
 }
 
-function labelStatus(status) {
-  const map = {
-    scheduled: "Scheduled",
-    due_soon: "Due Soon",
-    overdue: "Overdue",
-    missed: "Missed",
-    completed: "Completed",
-  };
-
-  return map[status] || status || "-";
+function formatOnlyTime(value){
+  if(!value) return "-";
+  return new Date(value).toLocaleTimeString("el-GR",{
+    timeZone:"Europe/Athens",
+    hour:"2-digit",
+    minute:"2-digit"
+  });
 }
 
-function getCountdownText(patrol) {
-  if (!patrol) return "-";
+function labelStatus(status){
+  return ({
+    scheduled:"Scheduled",
+    due_soon:"Due Soon",
+    overdue:"Overdue",
+    missed:"Missed",
+    completed:"Completed"
+  })[status] || status || "-";
+}
 
-  if (patrol.status === "scheduled") {
+function getWindowText(patrol){
+  if(!patrol) return "-";
+
+  if(patrol.status === "scheduled"){
     const mins = Math.abs(Number(patrol.minutes_delta || 0));
-    return `Opens in περίπου ${Math.max(mins - Number(patrol.reminder_minutes_before || 5), 0)} min`;
+    const opens = Math.max(mins - Number(patrol.reminder_minutes_before || 5), 0);
+    return `Opens in περίπου ${opens} min`;
   }
 
-  if (patrol.status === "due_soon") {
-    return "Scan window is open";
-  }
-
-  if (patrol.status === "overdue") {
-    return "Scan allowed before Missed";
-  }
-
-  if (patrol.status === "missed") {
-    return "Scan closed";
-  }
-
-  if (patrol.status === "completed") {
-    return "Already completed";
-  }
+  if(patrol.status === "due_soon") return "Scan window open";
+  if(patrol.status === "overdue") return "Scan allowed before missed";
+  if(patrol.status === "missed") return "Scan closed";
+  if(patrol.status === "completed") return "Already completed";
 
   return "-";
 }
 
-function showResult(type, html) {
-  resultBox.className = `result-box ${type}`;
-  resultBox.innerHTML = html;
+function splitPatrols(){
+  const active = patrols.filter(p => p.status === "due_soon" || p.status === "overdue");
+  const upcoming = patrols.filter(p => p.status === "scheduled");
+  const completed = patrols.filter(p => p.status === "completed");
+  const missed = patrols.filter(p => p.status === "missed");
+
+  return { active, upcoming, completed, missed };
 }
 
-function clearResult() {
-  resultBox.className = "result-box";
-  resultBox.innerHTML = "";
+function pickNextPatrol(groups){
+  if(groups.active.length) return groups.active[0];
+  if(groups.upcoming.length) return groups.upcoming[0];
+  return null;
 }
 
-function extractToken(decodedText) {
-  if (!decodedText) return null;
+function renderSummary(groups){
+  summaryEl.innerHTML = `
+    <div class="summary-box"><strong>${groups.completed.length}</strong><span>Completed</span></div>
+    <div class="summary-box"><strong>${groups.active.length}</strong><span>Active</span></div>
+    <div class="summary-box"><strong>${groups.upcoming.length}</strong><span>Upcoming</span></div>
+    <div class="summary-box"><strong>${groups.missed.length}</strong><span>Missed</span></div>
+  `;
+}
 
-  const cleanText = decodedText.trim();
+function renderHero(groups){
+  const next = pickNextPatrol(groups);
 
-  if (cleanText.startsWith("PATROL:")) {
-    return cleanText.replace("PATROL:", "").trim();
+  if(lastCompletedMessage){
+    heroEl.innerHTML = lastCompletedMessage;
+    return;
   }
 
-  try {
-    const url = new URL(cleanText);
-    const tokenFromUrl = url.searchParams.get("token");
-    if (tokenFromUrl) return tokenFromUrl.trim();
-  } catch {}
+  if(!next){
+    heroEl.innerHTML = `
+      <div class="hero-kicker">Next Patrol</div>
+      <div class="hero-title">No pending patrols</div>
+      <div class="hero-time">All patrols for the current 24h period are closed.</div>
+    `;
+    return;
+  }
 
-  return cleanText;
+  const canScan = next.scan_enabled === true;
+
+  heroEl.innerHTML = `
+    <div class="hero-kicker">Next Patrol</div>
+    <div class="hero-title">📍 ${next.checkpoint || "-"}</div>
+    <div class="hero-time">${formatTime(next.scheduled_at)}</div>
+
+    <div class="hero-meta">
+      <div class="row"><span>Status</span><strong>${labelStatus(next.status)}</strong></div>
+      <div class="row"><span>Scan Opens</span><strong>${formatOnlyTime(next.scan_available_from)}</strong></div>
+      <div class="row"><span>Scan Closes</span><strong>${formatOnlyTime(next.scan_available_until)}</strong></div>
+      <div class="row"><span>Window</span><strong>${getWindowText(next)}</strong></div>
+    </div>
+
+    <button class="btn ${canScan ? "btn-blue" : "btn-ghost"}" ${canScan ? "" : "disabled"} id="heroScanBtn" type="button">
+      ${canScan ? "Start QR Scan" : "Scan Disabled"}
+    </button>
+  `;
+
+  const heroBtn = document.getElementById("heroScanBtn");
+  if(canScan && heroBtn){
+    heroBtn.addEventListener("click", () => selectPatrol(next));
+  }
 }
 
-function getCurrentPosition() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error("GPS is not supported on this device."));
-      return;
-    }
+function renderPatrolCard(patrol, allowScan = false){
+  const canScan = allowScan && patrol.scan_enabled === true;
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-        });
-      },
-      (error) => {
-        reject(new Error(error.message || "GPS permission was denied."));
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      }
-    );
+  const article = document.createElement("article");
+  article.className = "patrol-item";
+
+  article.innerHTML = `
+    <div class="patrol-top">
+      <div>
+        <div class="checkpoint">${patrol.checkpoint || "-"}</div>
+        <div class="time">${formatTime(patrol.scheduled_at)}</div>
+      </div>
+      <div class="badge ${patrol.status}">${labelStatus(patrol.status)}</div>
+    </div>
+
+    <div class="row"><span>Type</span><strong>${patrol.schedule_type === "manual" ? "Manual" : "Recurring"}</strong></div>
+    <div class="row"><span>Window</span><strong>${getWindowText(patrol)}</strong></div>
+
+    ${canScan ? `<button class="btn btn-blue" type="button">Start Scan</button>` : ""}
+  `;
+
+  if(canScan){
+    article.querySelector("button").addEventListener("click", () => selectPatrol(patrol));
+  }
+
+  return article;
+}
+
+function renderList(target, items, options = {}){
+  target.innerHTML = "";
+
+  if(!items.length){
+    target.innerHTML = `<div class="empty">${options.empty || "No patrols"}</div>`;
+    return;
+  }
+
+  items.forEach(patrol => {
+    target.appendChild(renderPatrolCard(patrol, options.allowScan));
   });
 }
 
-async function loadPatrolBoard() {
-  if (!enforceSession()) return;
+function renderBoard(){
+  const groups = splitPatrols();
+
+  activeCountEl.textContent = groups.active.length;
+  upcomingCountEl.textContent = groups.upcoming.length;
+  completedToggle.textContent = completedListEl.style.display === "none" ? `Show (${groups.completed.length})` : `Hide (${groups.completed.length})`;
+  missedToggle.textContent = missedListEl.style.display === "none" ? `Show (${groups.missed.length})` : `Hide (${groups.missed.length})`;
+
+  renderSummary(groups);
+  renderHero(groups);
+
+  renderList(activeListEl, groups.active, {
+    allowScan:true,
+    empty:"No active patrols right now."
+  });
+
+  renderList(upcomingListEl, groups.upcoming.slice(0, 5), {
+    empty:"No upcoming patrols."
+  });
+
+  renderList(completedListEl, groups.completed, {
+    empty:"No completed patrols yet."
+  });
+
+  renderList(missedListEl, groups.missed, {
+    empty:"No missed patrols."
+  });
+}
+
+async function loadPatrolBoard(){
+  if(!enforceSession()) return;
 
   moduleStatusEl.textContent = "Loading";
-  refreshBtn.disabled = true;
+  manualRefreshBtn.disabled = true;
 
-  try {
+  try{
     const guardId = guardSession.guard.id;
     const sessionId = guardSession.session.id;
 
     const response = await fetch(
       `${API_BASE_URL}/guard/patrols/board?guard_id=${guardId}&session_id=${sessionId}`,
-      { cache: "no-store" }
+      { cache:"no-store" }
     );
 
     const data = await response.json();
 
-    if (!response.ok || data.status !== "ok") {
+    if(!response.ok || data.status !== "ok"){
       throw new Error(data.message || "Failed loading patrol board");
     }
 
     patrols = data.patrols || [];
-
     siteNameEl.textContent = data.site?.name || guardSession.guard.site_id || "-";
     moduleStatusEl.textContent = "Ready";
 
-    renderPatrols();
-  } catch (err) {
+    autoRefreshLabel.textContent = `Updated · ${new Date().toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"})}`;
+
+    renderBoard();
+
+  }catch(err){
     console.error(err);
     moduleStatusEl.textContent = "Failed";
-
-    patrolListEl.innerHTML = `
-      <div class="empty">
-        Failed loading patrol board.<br>
-        ${err.message || "Unknown error"}
-      </div>
-    `;
-  } finally {
-    refreshBtn.disabled = false;
+    heroEl.innerHTML = `<div class="empty">Failed loading patrol board.<br>${err.message || "Unknown error"}</div>`;
+  }finally{
+    manualRefreshBtn.disabled = false;
   }
 }
 
-function renderPatrols() {
-  if (!patrols.length) {
-    patrolListEl.innerHTML = `
-      <div class="empty">
-        No patrols found for the current 24h period.
-      </div>
-    `;
-    return;
+function clearResult(){
+  resultBox.className = "result-box";
+  resultBox.innerHTML = "";
+}
+
+function showResult(type, html){
+  resultBox.className = `result-box ${type}`;
+  resultBox.innerHTML = html;
+}
+
+function extractToken(decodedText){
+  if(!decodedText) return null;
+
+  const cleanText = decodedText.trim();
+
+  if(cleanText.startsWith("PATROL:")){
+    return cleanText.replace("PATROL:","").trim();
   }
 
-  patrolListEl.innerHTML = "";
+  try{
+    const url = new URL(cleanText);
+    const tokenFromUrl = url.searchParams.get("token");
+    if(tokenFromUrl) return tokenFromUrl.trim();
+  }catch{}
 
-  patrols.forEach((patrol, index) => {
-    const item = document.createElement("article");
-    item.className = "patrol-item";
-    item.dataset.index = index;
+  return cleanText;
+}
 
-    if (
-      selectedPatrol &&
-      selectedPatrol.schedule_id === patrol.schedule_id &&
-      selectedPatrol.scheduled_at === patrol.scheduled_at &&
-      selectedPatrol.point_id === patrol.point_id
-    ) {
-      item.classList.add("active");
+function getCurrentPosition(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation){
+      reject(new Error("GPS is not supported on this device."));
+      return;
     }
 
-    const canScan = patrol.scan_enabled === true;
-
-    item.innerHTML = `
-      <div class="patrol-top">
-        <div>
-          <div class="checkpoint">${patrol.checkpoint || "-"}</div>
-          <div class="time">${formatTime(patrol.scheduled_at)}</div>
-        </div>
-        <div class="badge ${patrol.status}">${labelStatus(patrol.status)}</div>
-      </div>
-
-      <div class="meta">
-        <div class="row">
-          <span>Type</span>
-          <strong>${patrol.schedule_type === "manual" ? "Manual" : "Recurring"}</strong>
-        </div>
-        <div class="row">
-          <span>Scan Opens</span>
-          <strong>${formatTime(patrol.scan_available_from)}</strong>
-        </div>
-        <div class="row">
-          <span>Scan Closes</span>
-          <strong>${formatTime(patrol.scan_available_until)}</strong>
-        </div>
-        <div class="row">
-          <span>Window</span>
-          <strong>${getCountdownText(patrol)}</strong>
-        </div>
-      </div>
-
-      <div class="scan-action">
-        <button class="btn ${canScan ? "btn-blue" : "btn-ghost"}" type="button" ${canScan ? "" : "disabled"}>
-          ${canScan ? "Select & Scan" : "Scan Disabled"}
-        </button>
-      </div>
-    `;
-
-    const button = item.querySelector("button");
-    if (canScan) {
-      button.addEventListener("click", () => selectPatrol(patrol));
-    }
-
-    patrolListEl.appendChild(item);
+    navigator.geolocation.getCurrentPosition(
+      (position)=>{
+        resolve({
+          latitude:position.coords.latitude,
+          longitude:position.coords.longitude,
+          accuracy:position.coords.accuracy
+        });
+      },
+      (error)=>{
+        reject(new Error(error.message || "GPS permission was denied."));
+      },
+      {
+        enableHighAccuracy:true,
+        timeout:15000,
+        maximumAge:0
+      }
+    );
   });
 }
 
-function selectPatrol(patrol) {
+function selectPatrol(patrol){
   selectedPatrol = patrol;
   clearResult();
 
   scanPanel.classList.add("show");
-
   selectedTitle.textContent = `${patrol.checkpoint || "-"} · ${labelStatus(patrol.status)}`;
-  selectedDetails.textContent =
-    `Scheduled: ${formatTime(patrol.scheduled_at)} · Closes: ${formatTime(patrol.scan_available_until)}`;
+  selectedDetails.textContent = `Scheduled: ${formatTime(patrol.scheduled_at)} · Closes: ${formatTime(patrol.scan_available_until)}`;
 
   startScanBtn.disabled = false;
   startScanBtn.textContent = "Start Scanner";
 
-  renderPatrols();
-
-  scanPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  scanPanel.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
-async function stopScanner() {
-  try {
-    if (html5QrCode) {
+async function stopScanner(){
+  try{
+    if(html5QrCode){
       await html5QrCode.stop();
       await html5QrCode.clear();
     }
-  } catch (err) {
-    console.warn("Scanner stop warning:", err);
+  }catch(err){
+    console.warn("Scanner stop warning:",err);
   }
 
   html5QrCode = null;
@@ -628,14 +823,9 @@ async function stopScanner() {
   stopBtn.disabled = true;
 }
 
-async function submitScan(scannedQrToken) {
-  if (!selectedPatrol) {
-    throw new Error("No patrol selected.");
-  }
-
-  if (!scannedQrToken) {
-    throw new Error("Invalid patrol QR. Token is missing.");
-  }
+async function submitScan(scannedQrToken){
+  if(!selectedPatrol) throw new Error("No patrol selected.");
+  if(!scannedQrToken) throw new Error("Invalid patrol QR. Token is missing.");
 
   moduleStatusEl.textContent = "GPS";
   startScanBtn.textContent = "Getting GPS...";
@@ -647,93 +837,91 @@ async function submitScan(scannedQrToken) {
   startScanBtn.textContent = "Recording...";
 
   const payload = {
-    schedule_id: selectedPatrol.schedule_id,
-    schedule_type: selectedPatrol.schedule_type,
-    scheduled_at: selectedPatrol.scheduled_at,
-    guard_id: guardSession.guard.id,
-    session_id: guardSession.session.id,
-    qr_token: scannedQrToken,
-    latitude: location.latitude,
-    longitude: location.longitude,
-    accuracy: location.accuracy,
+    schedule_id:selectedPatrol.schedule_id,
+    schedule_type:selectedPatrol.schedule_type,
+    scheduled_at:selectedPatrol.scheduled_at,
+    guard_id:guardSession.guard.id,
+    session_id:guardSession.session.id,
+    qr_token:scannedQrToken,
+    latitude:location.latitude,
+    longitude:location.longitude,
+    accuracy:location.accuracy
   };
 
-  const response = await fetch(`${API_BASE_URL}/patrol/scan`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+  const response = await fetch(`${API_BASE_URL}/patrol/scan`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(payload)
   });
 
   const data = await response.json();
 
-  if (!response.ok || data.status !== "ok") {
+  if(!response.ok || data.status !== "ok"){
     throw new Error(data.message || "Patrol scan failed.");
   }
+
+  const recordedAt = data.patrol?.patrol_time
+    ? new Date(data.patrol.patrol_time).toLocaleString("el-GR",{timeZone:"Europe/Athens"})
+    : new Date().toLocaleString("el-GR",{timeZone:"Europe/Athens"});
 
   moduleStatusEl.textContent = "Completed";
   startScanBtn.textContent = "Completed";
   startScanBtn.disabled = true;
 
-  const recordedAt = data.patrol?.patrol_time
-    ? new Date(data.patrol.patrol_time).toLocaleString("el-GR", {
-        timeZone: "Europe/Athens",
-      })
-    : new Date().toLocaleString("el-GR", {
-        timeZone: "Europe/Athens",
-      });
-
-  showResult(
-    "success",
-    `
+  showResult("success",`
     <strong>Patrol Completed Successfully</strong><br>
     Checkpoint: ${data.checkpoint?.name || selectedPatrol.checkpoint || "-"}<br>
     Scheduled: ${formatTime(selectedPatrol.scheduled_at)}<br>
     Recorded: ${recordedAt}<br>
     GPS Accuracy: ${Math.round(location.accuracy)}m
-    `
-  );
+  `);
+
+  lastCompletedMessage = `
+    <div class="hero-kicker">Completed</div>
+    <div class="hero-title">✔ Patrol Completed</div>
+    <div class="hero-time">${selectedPatrol.checkpoint || "-"} · ${recordedAt}</div>
+    <div class="hero-meta">
+      <div class="row"><span>Scheduled</span><strong>${formatTime(selectedPatrol.scheduled_at)}</strong></div>
+      <div class="row"><span>GPS Accuracy</span><strong>${Math.round(location.accuracy)}m</strong></div>
+    </div>
+  `;
 
   await loadPatrolBoard();
+
+  setTimeout(()=>{
+    lastCompletedMessage = null;
+    renderBoard();
+  },3000);
 }
 
-async function startScanner() {
-  if (!selectedPatrol || isProcessing) return;
+async function startScanner(){
+  if(!selectedPatrol || isProcessing) return;
 
   clearResult();
-
   isProcessing = false;
+
   moduleStatusEl.textContent = "Scanner Active";
   startScanBtn.textContent = "Scanner Running";
   startScanBtn.disabled = true;
   stopBtn.disabled = false;
 
   qrReaderElement.style.display = "block";
-
   html5QrCode = new Html5Qrcode("qr-reader");
 
-  try {
+  try{
     await html5QrCode.start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: { width: 240, height: 240 },
-      },
-      async (decodedText) => {
-        if (isProcessing) return;
-
+      { facingMode:"environment" },
+      { fps:10, qrbox:{width:240,height:240} },
+      async(decodedText)=>{
+        if(isProcessing) return;
         isProcessing = true;
 
-        try {
+        try{
           const token = extractToken(decodedText);
-
           await stopScanner();
-
           await submitScan(token);
-        } catch (err) {
+        }catch(err){
           console.error(err);
-
           await stopScanner();
 
           moduleStatusEl.textContent = "Failed";
@@ -741,18 +929,15 @@ async function startScanner() {
           startScanBtn.textContent = "Try Again";
           isProcessing = false;
 
-          showResult(
-            "error",
-            `
+          showResult("error",`
             <strong>Patrol scan failed</strong><br>
             ${err.message || "Unknown error"}
-            `
-          );
+          `);
         }
       },
-      () => {}
+      ()=>{}
     );
-  } catch (err) {
+  }catch(err){
     console.error(err);
 
     moduleStatusEl.textContent = "Camera Failed";
@@ -761,35 +946,45 @@ async function startScanner() {
     qrReaderElement.style.display = "none";
     stopBtn.disabled = true;
 
-    showResult(
-      "error",
-      `
+    showResult("error",`
       <strong>Camera could not start</strong><br>
       ${err.message || "Camera permission denied or unavailable."}
-      `
-    );
+    `);
   }
 }
 
-refreshBtn.addEventListener("click", loadPatrolBoard);
-startScanBtn.addEventListener("click", startScanner);
-stopBtn.addEventListener("click", stopScanner);
+completedToggle.addEventListener("click",()=>{
+  completedListEl.style.display = completedListEl.style.display === "none" ? "flex" : "none";
+  completedListEl.style.flexDirection = "column";
+  completedListEl.style.gap = "10px";
+  renderBoard();
+});
 
-window.addEventListener("pageshow", () => {
+missedToggle.addEventListener("click",()=>{
+  missedListEl.style.display = missedListEl.style.display === "none" ? "flex" : "none";
+  missedListEl.style.flexDirection = "column";
+  missedListEl.style.gap = "10px";
+  renderBoard();
+});
+
+manualRefreshBtn.addEventListener("click",loadPatrolBoard);
+startScanBtn.addEventListener("click",startScanner);
+stopBtn.addEventListener("click",stopScanner);
+
+window.addEventListener("pageshow",()=>{
   enforceSession();
   loadPatrolBoard();
 });
 
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState === "visible"){
     loadPatrolBoard();
   }
 });
 
 enforceSession();
 loadPatrolBoard();
-setInterval(loadPatrolBoard, 30000);
+setInterval(loadPatrolBoard,30000);
 </script>
-
 </body>
 </html>
