@@ -100,19 +100,19 @@ async function sendSubscriptionToBackend(subscription, guardSession) {
     console.warn("No push subscription to send.");
     return false;
   }
-  
+
   if (!guardSession?.guard?.id || !guardSession?.session?.id) {
-  console.warn("Guard session is missing. Push subscription was not sent.");
-  return false;
-}
+    console.warn("Guard session is missing. Push subscription was not sent.");
+    return false;
+  }
 
   const payload = {
-  subscription,
-  guard_id: guardSession.guard.id,
-  session_id: guardSession.session.id,
-  user_agent: navigator.userAgent,
-  device_name: "Web PWA",
-};
+    subscription,
+    guard_id: guardSession.guard.id,
+    session_id: guardSession.session.id,
+    user_agent: navigator.userAgent,
+    device_name: "Web PWA",
+  };
 
   try {
     const response = await fetch(`${API_BASE_URL}/push/subscribe`, {
