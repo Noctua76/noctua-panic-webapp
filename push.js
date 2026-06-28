@@ -143,6 +143,27 @@ async function renewSubscription() {}
 
 async function unsubscribe() {}
 
-export async function initializePushNotifications() {
+export async function initializePushNotifications(guardSession) {
   console.log("Initializing Push Notifications...");
+
+  const registration = await registerServiceWorker();
+
+  if (!registration) {
+    return;
+  }
+
+  const permissionGranted = await requestNotificationPermission();
+
+  if (!permissionGranted) {
+    console.warn("Notification permission was denied.");
+    return;
+  }
+
+  const subscription = await subscribeDevice();
+
+  if (!subscription) {
+    return;
+  }
+
+  await sendSubscriptionToBackend(subscription, guardSession);
 }
