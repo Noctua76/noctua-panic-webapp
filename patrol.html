@@ -461,7 +461,8 @@ h1{
   <footer class="footer">© Noctua Core – Aegis Link Patrol Module</footer>
 </div>
 
-<script>
+<script type="module">
+  import { initializePushNotifications } from "./push.js";
 const API_BASE_URL = "https://noctua-panic-backend-production.up.railway.app";
 const SESSION_KEY = "aegis_guard_session";
 
@@ -982,9 +983,17 @@ document.addEventListener("visibilitychange",()=>{
   }
 });
 
-enforceSession();
-loadPatrolBoard();
-setInterval(loadPatrolBoard,30000);
+async function initializePatrolModule() {
+  enforceSession();
+
+  await initializePushNotifications(guardSession);
+
+  await loadPatrolBoard();
+
+  setInterval(loadPatrolBoard, 30000);
+}
+
+initializePatrolModule();
 </script>
 </body>
 </html>
