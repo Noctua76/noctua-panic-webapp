@@ -29,7 +29,8 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const url = event.notification.data?.url || "/patrol.html";
+  const fallbackUrl = "/noctua-panic-webapp/patrol.html";
+  const targetUrl = event.notification.data?.url || fallbackUrl;
 
   event.waitUntil(
     clients.matchAll({
@@ -37,13 +38,13 @@ self.addEventListener("notificationclick", (event) => {
       includeUncontrolled: true,
     }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url.includes("/patrol.html")) {
+        if (client.url.includes("/noctua-panic-webapp/patrol.html")) {
           client.focus();
-          return client.navigate(url);
+          return client.navigate(targetUrl);
         }
       }
 
-      return clients.openWindow(url);
+      return clients.openWindow(targetUrl);
     })
   );
 });
