@@ -492,6 +492,7 @@ const autoRefreshLabel = document.getElementById("autoRefreshLabel");
 
 let guardSession = null;
 let patrols = [];
+let completedPatrols = [];
 let selectedPatrol = null;
 let html5QrCode = null;
 let isProcessing = false;
@@ -569,7 +570,7 @@ function getWindowText(patrol){
 function splitPatrols(){
   const active = patrols.filter(p => p.status === "due_soon" || p.status === "overdue");
   const upcoming = patrols.filter(p => p.status === "scheduled");
-  const completed = patrols.filter(p => p.status === "completed");
+  const completed = completedPatrols;
   const missed = patrols.filter(p => p.status === "missed");
 
   return { active, upcoming, completed, missed };
@@ -647,7 +648,7 @@ function renderPatrolCard(patrol, allowScan = false){
       <div class="badge ${patrol.status}">${labelStatus(patrol.status)}</div>
     </div>
 
-    <div class="row"><span>Type</span><strong>${patrol.schedule_type === "manual" ? "Manual" : "Recurring"}</strong></div>
+    <div class="row"><span>Type</span><strong>${patrol.schedule_type === "manual" ? "Extra Patrol" : "Routine Patrol"}</strong></div>
     <div class="row"><span>Window</span><strong>${getWindowText(patrol)}</strong></div>
 
     ${canScan ? `<button class="btn btn-blue" type="button">Start Scan</button>` : ""}
@@ -724,6 +725,7 @@ async function loadPatrolBoard(){
     }
 
     patrols = data.patrols || [];
+    completedPatrols = data.completed_patrols || [];
     siteNameEl.textContent = data.site?.name || guardSession.guard.site_id || "-";
     moduleStatusEl.textContent = "Ready";
 
