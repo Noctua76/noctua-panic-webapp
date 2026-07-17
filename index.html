@@ -893,6 +893,14 @@
   // 🔹 Global βάση για όλα τα calls προς backend
   const BACKEND_BASE = 'https://noctua-panic-backend-production.up.railway.app';
   const SESSION_KEY = "aegis_guard_session";
+  function getGuardAuthHeaders() {
+  const token = localStorage.getItem("guard_session_token");
+
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 let currentGuardSession = null;
 
@@ -956,16 +964,13 @@ function enforceMainAppSession() {
 
 async function logoutGuard() {
   try {
-    if (currentGuardSession?.guard?.id && currentGuardSession?.session?.id) {
-      await fetch(`${BACKEND_BASE}/guard/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guard_id: currentGuardSession.guard.id,
-          session_id: currentGuardSession.session.id
-        })
-      });
-    }
+    if (currentGuardSession?.guard_session_token) {
+  await fetch(`${BACKEND_BASE}/guard/logout`, {
+    method: "POST",
+    headers: getGuardAuthHeaders(),
+    body: JSON.stringify({})
+  });
+}
   } catch (err) {
     console.error("Guard logout backend error:", err);
   } finally {
@@ -1031,10 +1036,8 @@ latestGuardLocation = {
 };
     const response = await fetch(`${BACKEND_BASE}/guard/location`, {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: getGuardAuthHeaders(),
   body: JSON.stringify({
-    guard_id: currentGuardSession.guard.id,
-    session_id: currentGuardSession.session.id,
     latitude: coords.latitude,
     longitude: coords.longitude,
     accuracy: coords.accuracy,
@@ -1120,13 +1123,10 @@ async function sendGuardHeartbeat() {
 
   try {
     await fetch(`${BACKEND_BASE}/guard/heartbeat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        guard_id: currentGuardSession.guard.id,
-        session_id: currentGuardSession.session.id
-      })
-    });
+  method: "POST",
+  headers: getGuardAuthHeaders(),
+  body: JSON.stringify({})
+});
   } catch (err) {
     console.error("Guard heartbeat failed:", err);
   }
@@ -1179,6 +1179,10 @@ async function loginGuard() {
     }
 
     localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    localStorage.setItem(
+  "guard_session_token",
+  data.guard_session_token
+);
     showMainApp(data);
 
   } catch (err) {
@@ -1349,8 +1353,6 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     const endpoint = `${BACKEND_BASE}/alert`;
 
     const payload = {
-  siteId: currentGuardSession?.guard?.site_id,
-  guardId: currentGuardSession?.guard?.id,
   sessionId: currentGuardSession?.session?.id,
   source: 'aegis-link-webapp',
   triggeredAt: new Date().toISOString(),
@@ -1364,10 +1366,10 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 };
 
     const response = await fetch(endpoint, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify(payload)
-    });
+  method: "POST",
+  headers: getGuardAuthHeaders(),
+  body: JSON.stringify(payload)
+});
 
     if (!response.ok) {
       throw new Error('Alert request failed with status ' + response.status);
@@ -1380,18 +1382,16 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       const endpoint = `${BACKEND_BASE}/incident-log`;
 
       const payload = {
-        guardId: currentGuardSession?.guard?.id,
-        siteId: currentGuardSession?.guard?.site_id,
         sessionId: currentGuardSession?.session?.id,
         timestamp: new Date().toISOString(),
         message: message
       };
 
       const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+  method: "POST",
+  headers: getGuardAuthHeaders(),
+  body: JSON.stringify(payload)
+});
 
       if (!response.ok) {
         console.error("Incident-log request failed with status", response.status);
@@ -1414,8 +1414,6 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     const endpoint = `${BACKEND_BASE}/incident-log`;
 
     const payload = {
-  guardId: currentGuardSession?.guard?.id,
-  siteId: currentGuardSession?.guard?.site_id,
   sessionId: currentGuardSession?.session?.id,
   timestamp: new Date().toISOString(),
   incidentAnswers: answers,
@@ -1430,7 +1428,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: getGuardAuthHeaders(),
       body: JSON.stringify(payload)
     });
 
