@@ -1355,7 +1355,6 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     const payload = {
   sessionId: currentGuardSession?.session?.id,
   source: 'aegis-link-webapp',
-  triggeredAt: new Date().toISOString(),
 
   latitude: latestGuardLocation?.latitude || null,
   longitude: latestGuardLocation?.longitude || null,
