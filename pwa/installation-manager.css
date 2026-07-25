@@ -51,6 +51,8 @@
 
     font-size: 17px;
 
+    letter-spacing:.4px;
+
 }
 
 .pwa-install-subtitle {
@@ -75,7 +77,7 @@
 
     cursor: pointer;
 
-    color: #777;
+    color:rgba(255,255,255,.45);
 
 }
 
@@ -91,35 +93,39 @@
 
     font-size: 14px;
 
+    color:rgba(255,255,255,.82);
+
 }
 
 .pwa-install-actions {
 
-    display: flex;
-
-    justify-content: flex-end;
-
-    gap: 12px;
-
-    margin-top: 22px;
+    margin-top:24px;
 
 }
 
 .pwa-install-button {
 
-    background: #0f62fe;
+    width:100%;
 
-    color: white;
+    height:48px;
 
-    border: none;
+    border:none;
 
-    border-radius: 10px;
+    border-radius:14px;
 
-    padding: 10px 20px;
+    background:linear-gradient(
+        90deg,
+        #ff4b4b,
+        #ff7a59
+    );
 
-    cursor: pointer;
+    color:white;
 
-    font-weight: 600;
+    font-weight:600;
+
+    font-size:15px;
+
+    cursor:pointer;
 
 }
 

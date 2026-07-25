@@ -44,50 +44,47 @@ function showInstallPrompt() {
     container.style.display = "block";
 
     container.innerHTML = `
-        <div class="pwa-install-card">
+    <div class="pwa-install-card">
 
-            <div class="pwa-install-header">
+        <div class="pwa-install-header">
 
-                <div>
+            <strong>Application Installation</strong>
 
-                    <strong>Install Aegis Link</strong>
-
-                    <div class="pwa-install-subtitle">
-                        Install the app for faster access.
-                    </div>
-
-                </div>
-
-                <button class="pwa-close-button">
-                    ✕
-                </button>
-
-            </div>
-
-            <div class="pwa-install-features">
-
-                <div>⚡ One-tap access</div>
-
-                <div>🔔 Instant notifications</div>
-
-                <div>📶 Works offline</div>
-
-            </div>
-
-            <div class="pwa-install-actions">
-
-                <button class="pwa-install-button">
-                    Install
-                </button>
-
-                <button class="pwa-later-button">
-                    Not now
-                </button>
-
-            </div>
+            <button class="pwa-close-button">
+                ✕
+            </button>
 
         </div>
-    `;
+
+        <div class="pwa-install-subtitle">
+
+            Install this application on your device to enable
+            push notifications and the complete security workflow.
+
+        </div>
+
+        <div class="pwa-install-features">
+
+            <div>One-tap access</div>
+
+            <div>Push notifications</div>
+
+            <div>Offline availability</div>
+
+        </div>
+
+        <div class="pwa-install-actions">
+
+            <button class="pwa-install-button">
+
+                Install Application
+
+            </button>
+
+        </div>
+
+    </div>
+`;
 
 }
 
