@@ -74,6 +74,38 @@ function initialize() {
 
     console.log("PWA State:", getState());
 
+    switch (getState()) {
+
+        case INSTALL_STATES.INSTALLED:
+            InstallUI.hide();
+            break;
+
+        case INSTALL_STATES.CAN_INSTALL:
+            InstallUI.showMessage(
+                "Install Aegis Link",
+                "Your device supports one-click installation."
+            );
+            break;
+
+        case INSTALL_STATES.MANUAL_INSTALL:
+            InstallUI.showMessage(
+                "Install Aegis Link",
+                "Follow your browser's installation instructions."
+            );
+            break;
+
+        case INSTALL_STATES.UNSUPPORTED:
+            InstallUI.showMessage(
+                "Browser Not Supported",
+                "Please use a supported browser."
+            );
+            break;
+
+        default:
+            InstallUI.hide();
+
+    }
+
 }
 function canStartApplication() {
 

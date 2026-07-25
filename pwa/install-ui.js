@@ -35,11 +35,31 @@ function hide() {
 
 }
 
+function showMessage(title, message) {
+
+    if (!container) {
+        return;
+    }
+
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="pwa-install-card">
+
+            <h2>${title}</h2>
+
+            <p>${message}</p>
+
+        </div>
+    `;
+
+}
+
 return {
 
     initialize,
-
-    hide
+    hide,
+    showMessage
 
 };
 
