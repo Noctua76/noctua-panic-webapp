@@ -35,7 +35,7 @@ function hide() {
 
 }
 
-function showMessage(title, message) {
+function showInstallPrompt() {
 
     if (!container) {
         return;
@@ -46,9 +46,45 @@ function showMessage(title, message) {
     container.innerHTML = `
         <div class="pwa-install-card">
 
-            <h2>${title}</h2>
+            <div class="pwa-install-header">
 
-            <p>${message}</p>
+                <div>
+
+                    <strong>Install Aegis Link</strong>
+
+                    <div class="pwa-install-subtitle">
+                        Install the app for faster access.
+                    </div>
+
+                </div>
+
+                <button class="pwa-close-button">
+                    ✕
+                </button>
+
+            </div>
+
+            <div class="pwa-install-features">
+
+                <div>⚡ One-tap access</div>
+
+                <div>🔔 Instant notifications</div>
+
+                <div>📶 Works offline</div>
+
+            </div>
+
+            <div class="pwa-install-actions">
+
+                <button class="pwa-install-button">
+                    Install
+                </button>
+
+                <button class="pwa-later-button">
+                    Not now
+                </button>
+
+            </div>
 
         </div>
     `;
@@ -59,7 +95,7 @@ return {
 
     initialize,
     hide,
-    showMessage
+    showInstallPrompt
 
 };
 
