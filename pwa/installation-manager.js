@@ -72,6 +72,8 @@ function initialize() {
 
     determineState();
 
+    console.log("PWA State:", getState());
+
 }
 function canStartApplication() {
 
