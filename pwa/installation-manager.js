@@ -81,25 +81,16 @@ function initialize() {
             break;
 
         case INSTALL_STATES.CAN_INSTALL:
-            InstallUI.showMessage(
-                "Install Aegis Link",
-                "Your device supports one-click installation."
-            );
-            break;
+    InstallUI.showInstallPrompt();
+    break;
 
-        case INSTALL_STATES.MANUAL_INSTALL:
-            InstallUI.showMessage(
-                "Install Aegis Link",
-                "Follow your browser's installation instructions."
-            );
-            break;
+case INSTALL_STATES.MANUAL_INSTALL:
+    InstallUI.showInstallPrompt();
+    break;
 
         case INSTALL_STATES.UNSUPPORTED:
-            InstallUI.showMessage(
-                "Browser Not Supported",
-                "Please use a supported browser."
-            );
-            break;
+    InstallUI.hide();
+    break;
 
         default:
             InstallUI.hide();
