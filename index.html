@@ -668,6 +668,7 @@
       .app{padding-top:20px;}
     }
   </style>
+  <link rel="stylesheet" href="pwa/installation-manager.css">
 </head>
 <body>
 
@@ -1686,6 +1687,18 @@ if ("serviceWorker" in navigator) {
   });
 }
 </script>
+
+<div id="pwa-install-container"></div>
+
+<script src="pwa/browser-detector.js"></script>
+<script src="pwa/installation-manager.js"></script>
+<script src="pwa/install-ui.js"></script>
+
+<script>
+    InstallUI.initialize();
+    InstallationManager.initialize();
+</script>
+
 </body>
 </html>
 
