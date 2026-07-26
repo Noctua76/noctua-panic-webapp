@@ -86,6 +86,14 @@ function showInstallPrompt() {
     </div>
 `;
 
+const installButton = container.querySelector(".pwa-install-button");
+
+installButton?.addEventListener("click", () => {
+
+    InstallationManager.promptInstall();
+
+});
+
 }
 
 return {

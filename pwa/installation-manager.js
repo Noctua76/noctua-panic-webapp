@@ -80,14 +80,56 @@ function registerInstallPrompt() {
 
         setState(INSTALL_STATES.CAN_INSTALL);
 
+        InstallUI.showInstallPrompt();
+
         console.log("PWA install prompt captured.");
 
     });
 
 }
+function registerInstalledEvent() {
+
+    window.addEventListener("appinstalled", () => {
+
+        console.log("PWA installed.");
+
+        deferredPrompt = null;
+
+        setState(INSTALL_STATES.INSTALLED);
+
+        InstallUI.hide();
+
+    });
+
+}
+async function promptInstall() {
+
+    if (!deferredPrompt) {
+
+        console.warn("No installation prompt available.");
+
+        return false;
+
+    }
+
+    deferredPrompt.prompt();
+
+    const { outcome } = await deferredPrompt.userChoice;
+
+    console.log("Install choice:", outcome);
+
+    deferredPrompt = null;
+
+    determineState();
+
+    return outcome === "accepted";
+
+}
 function initialize() {
 
     registerInstallPrompt();
+
+    registerInstalledEvent();
 
     determineState();
 
@@ -130,6 +172,8 @@ return {
     getState,
 
     canStartApplication,
+
+    promptInstall,
 
     getStates() {
         return INSTALL_STATES;
