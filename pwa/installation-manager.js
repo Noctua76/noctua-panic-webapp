@@ -34,6 +34,8 @@ const InstallationManager = (() => {
 
 let currentState = INSTALL_STATES.BOOT;
 
+let deferredPrompt = null;
+
 function setState(state) {
 
     if (!Object.values(INSTALL_STATES).includes(state)) {
@@ -68,7 +70,24 @@ function determineState() {
     setState(INSTALL_STATES.MANUAL_INSTALL);
 
 }
+function registerInstallPrompt() {
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+
+        event.preventDefault();
+
+        deferredPrompt = event;
+
+        setState(INSTALL_STATES.CAN_INSTALL);
+
+        console.log("PWA install prompt captured.");
+
+    });
+
+}
 function initialize() {
+
+    registerInstallPrompt();
 
     determineState();
 
