@@ -81,6 +81,10 @@ function showInstallPrompt() {
 
             </button>
 
+            <p class="pwa-install-note">
+    For the best installation experience, we recommend using Google Chrome.
+</p>
+
         </div>
 
     </div>
