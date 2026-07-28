@@ -146,7 +146,7 @@ function initialize() {
     break;
 
 case INSTALL_STATES.MANUAL_INSTALL:
-    InstallUI.showInstallPrompt();
+    InstallUI.showManualInstructions();
     break;
 
         case INSTALL_STATES.UNSUPPORTED:

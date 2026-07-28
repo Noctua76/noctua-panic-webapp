@@ -90,6 +90,10 @@ function showInstallPrompt() {
     </div>
 `;
 
+const closeButton = container.querySelector(".pwa-close-button");
+
+closeButton?.addEventListener("click", hide);
+
 const installButton = container.querySelector(".pwa-install-button");
 
 installButton?.addEventListener("click", () => {
@@ -100,11 +104,58 @@ installButton?.addEventListener("click", () => {
 
 }
 
+function showManualInstructions() {
+
+    if (!container) {
+        return;
+    }
+
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="pwa-install-card">
+
+            <div class="pwa-install-header">
+
+                <strong>Application Installation</strong>
+
+                <button class="pwa-close-button">
+                    ✕
+                </button>
+
+            </div>
+
+            <div class="pwa-install-subtitle">
+
+                To install Aegis Link on this device:
+
+            </div>
+
+            <div class="pwa-install-features">
+
+                <div>1. Open your browser menu</div>
+
+                <div>2. Select "Add to Home Screen"</div>
+
+                <div>3. Confirm the installation</div>
+
+            </div>
+
+        </div>
+    `;
+
+    const closeButton = container.querySelector(".pwa-close-button");
+
+    closeButton?.addEventListener("click", hide);
+
+}
+
 return {
 
     initialize,
     hide,
-    showInstallPrompt
+    showInstallPrompt,
+    showManualInstructions
 
 };
 
