@@ -150,12 +150,59 @@ function showManualInstructions() {
 
 }
 
+function showInstalled() {
+
+    if (!container) {
+        return;
+    }
+
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="pwa-install-card">
+
+            <div class="pwa-install-header">
+
+                <strong>Application Installed</strong>
+
+                <button class="pwa-close-button">
+                    ✕
+                </button>
+
+            </div>
+
+            <div class="pwa-install-subtitle">
+
+                You are using the installed version of Aegis Link.
+
+            </div>
+
+            <div class="pwa-install-features">
+
+                <div>✓ Fast access</div>
+
+                <div>✓ Push notifications enabled</div>
+
+                <div>✓ Optimized application experience</div>
+
+            </div>
+
+        </div>
+    `;
+
+    const closeButton = container.querySelector(".pwa-close-button");
+
+    closeButton?.addEventListener("click", hide);
+
+}
+
 return {
 
     initialize,
     hide,
     showInstallPrompt,
-    showManualInstructions
+    showManualInstructions,
+    showInstalled
 
 };
 

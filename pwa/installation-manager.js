@@ -97,7 +97,7 @@ function registerInstalledEvent() {
 
         setState(INSTALL_STATES.INSTALLED);
 
-        InstallUI.hide();
+InstallUI.showInstalled();
 
     });
 
@@ -138,8 +138,8 @@ function initialize() {
     switch (getState()) {
 
         case INSTALL_STATES.INSTALLED:
-            InstallUI.hide();
-            break;
+    InstallUI.showInstalled();
+    break;
 
         case INSTALL_STATES.CAN_INSTALL:
     InstallUI.showInstallPrompt();
