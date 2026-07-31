@@ -150,7 +150,7 @@ case INSTALL_STATES.MANUAL_INSTALL:
     break;
 
         case INSTALL_STATES.UNSUPPORTED:
-    InstallUI.hide();
+    InstallUI.showUnsupported();
     break;
 
         default:

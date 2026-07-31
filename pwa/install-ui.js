@@ -196,13 +196,58 @@ function showInstalled() {
 
 }
 
+function showUnsupported() {
+
+    if (!container) {
+        return;
+    }
+
+    container.style.display = "block";
+
+    container.innerHTML = `
+        <div class="pwa-install-card">
+
+            <div class="pwa-install-header">
+
+                <strong>Installation Not Supported</strong>
+
+                <button class="pwa-close-button">
+                    ✕
+                </button>
+
+            </div>
+
+            <div class="pwa-install-subtitle">
+
+                Your browser does not support installing this application as a Progressive Web App.
+
+            </div>
+
+            <div class="pwa-install-features">
+
+                <div>• Open the application in a supported browser.</div>
+
+                <div>• We recommend the latest version of Google Chrome, Microsoft Edge or Samsung Internet.</div>
+
+            </div>
+
+        </div>
+    `;
+
+    const closeButton = container.querySelector(".pwa-close-button");
+
+    closeButton?.addEventListener("click", hide);
+
+}
+
 return {
 
     initialize,
     hide,
     showInstallPrompt,
     showManualInstructions,
-    showInstalled
+    showInstalled,
+    showUnsupported
 
 };
 
