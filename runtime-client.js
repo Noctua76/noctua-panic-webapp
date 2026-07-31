@@ -98,6 +98,13 @@ const RuntimeClient = (() => {
 
         const token = localStorage.getItem("guard_session_token");
 
+        alert(
+    `[Aegis Runtime ${RUNTIME_VERSION}]\n` +
+    `report() executed\n` +
+    `Token: ${token ? "YES" : "NO"}\n` +
+    `Standalone: ${isStandalone() ? "YES" : "NO"}`
+);
+
 console.log("[Aegis Runtime] Report started", {
     tokenAvailable: Boolean(token),
     standalone: isStandalone(),
