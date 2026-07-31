@@ -7,7 +7,7 @@
 
 const RuntimeClient = (() => {
 
-    const RUNTIME_VERSION = "1.0.0";
+    const RUNTIME_VERSION = "1.1.0";
     const INSTALLATION_UUID_KEY = "pwa_installation_uuid";
 
     function getInstallationUuid() {
@@ -98,9 +98,20 @@ const RuntimeClient = (() => {
 
         const token = localStorage.getItem("guard_session_token");
 
-        if (!token) {
-            return null;
-        }
+console.log("[Aegis Runtime] Report started", {
+    tokenAvailable: Boolean(token),
+    standalone: isStandalone(),
+    state: InstallationManager.getState(),
+    runtimeVersion: RUNTIME_VERSION
+});
+
+if (!token) {
+    console.error(
+        "[Aegis Runtime] Registration skipped: guard_session_token is missing"
+    );
+
+    return null;
+}
 
         const browser = getBrowser();
 
