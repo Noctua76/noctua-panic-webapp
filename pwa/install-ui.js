@@ -87,6 +87,12 @@ function showInstallPrompt() {
 
         </div>
 
+        <div class="pwa-runtime-version">
+
+    PWA Runtime v1.2.0
+
+</div>
+
     </div>
 `;
 
@@ -141,6 +147,12 @@ function showManualInstructions() {
 
             </div>
 
+            <div class="pwa-runtime-version">
+
+    PWA Runtime v1.2.0
+
+</div>
+
         </div>
     `;
 
@@ -187,6 +199,12 @@ function showInstalled() {
 
             </div>
 
+            <div class="pwa-runtime-version">
+
+    PWA Runtime v1.2.0
+
+</div>
+
         </div>
     `;
 
@@ -230,6 +248,12 @@ function showUnsupported() {
                 <div>• We recommend the latest version of Google Chrome, Microsoft Edge or Samsung Internet.</div>
 
             </div>
+
+            <div class="pwa-runtime-version">
+
+    PWA Runtime v1.2.0
+
+</div>
 
         </div>
     `;
