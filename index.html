@@ -1699,16 +1699,42 @@ window.addEventListener("online", () => {
   </script>
   <script>
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js");
+  window.addEventListener("load", async () => {
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    let reloading = false;
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || reloading) {
+        return;
+      }
+
+      reloading = true;
+      window.location.reload();
+    });
+
+    try {
+      const registration = await navigator.serviceWorker.register(
+        "./service-worker.js",
+        {
+          updateViaCache: "none"
+        }
+      );
+
+      await registration.update();
+    } catch (error) {
+      console.error(
+        "[Aegis Link] Service worker update failed:",
+        error
+      );
+    }
   });
 }
 </script>
 
-<script src="pwa/browser-detector.js"></script>
-<script src="pwa/installation-manager.js"></script>
-<script src="./runtime-client.js"></script>
-<script src="pwa/install-ui.js"></script>
+<script src="pwa/browser-detector.js?v=1.1.0"></script>
+<script src="pwa/installation-manager.js?v=1.1.0"></script>
+<script src="./runtime-client.js?v=1.1.0"></script>
+<script src="pwa/install-ui.js?v=1.1.0"></script>
 
 <script>
     InstallUI.initialize();
