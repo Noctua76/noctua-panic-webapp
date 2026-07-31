@@ -1191,6 +1191,16 @@ async function loginGuard() {
   "guard_session_token",
   data.guard_session_token
 );
+RuntimeClient.report(BACKEND_BASE, {
+  event: "runtime_started",
+  previousState: "BOOT",
+  state: InstallationManager.getState(),
+  details: {
+    source: "guard_login"
+  }
+}).catch((error) => {
+  console.error("Runtime registration failed:", error);
+});
     showMainApp(data);
 
   } catch (err) {
@@ -1697,6 +1707,7 @@ if ("serviceWorker" in navigator) {
 
 <script src="pwa/browser-detector.js"></script>
 <script src="pwa/installation-manager.js"></script>
+<script src="./runtime-client.js"></script>
 <script src="pwa/install-ui.js"></script>
 
 <script>
