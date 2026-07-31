@@ -1,9 +1,33 @@
-self.addEventListener("install", () => {
-  self.skipWaiting();
+const SERVICE_WORKER_VERSION = "1.1.0";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      await self.clients.claim();
+
+      const openClients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true
+      });
+
+      await Promise.all(
+        openClients.map(async (client) => {
+          try {
+            await client.navigate(client.url);
+          } catch (error) {
+            console.error(
+              "[Aegis Link] Client reload failed:",
+              error
+            );
+          }
+        })
+      );
+    })()
+  );
 });
 
 self.addEventListener("fetch", (event) => {
