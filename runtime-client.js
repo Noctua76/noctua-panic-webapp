@@ -7,7 +7,6 @@
 
 const RuntimeClient = (() => {
 
-    const RUNTIME_VERSION = "1.1.0";
     const INSTALLATION_UUID_KEY = "pwa_installation_uuid";
 
     function getInstallationUuid() {
@@ -98,12 +97,18 @@ const RuntimeClient = (() => {
 
         const token = localStorage.getItem("guard_session_token");
 
+        const runtimeVersion =
+    BrowserDetector.getRuntimeVersion();
+
+const deviceMetadata =
+    await BrowserDetector.getDeviceMetadata();
+
         
 console.log("[Aegis Runtime] Report started", {
     tokenAvailable: Boolean(token),
     standalone: isStandalone(),
     state: InstallationManager.getState(),
-    runtimeVersion: RUNTIME_VERSION
+    runtimeVersion
 });
 
 if (!token) {
@@ -124,7 +129,7 @@ if (!token) {
 
             installationUuid: getInstallationUuid(),
 
-            runtimeVersion: RUNTIME_VERSION,
+            runtimeVersion,
 
             event: options.event || "runtime_started",
 
@@ -135,8 +140,8 @@ if (!token) {
 
             platform: getPlatform(),
             deviceType: getDeviceType(),
-            deviceName: null,
-            osVersion: null,
+            deviceName: deviceMetadata.deviceName,
+            osVersion: deviceMetadata.osVersion,
 
             browser: browser.name,
             browserVersion: browser.version,

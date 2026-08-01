@@ -37,11 +37,23 @@ jobs:
             --exclude="_site/" \
             ./ _site/
 
+          BUILD_VERSION="deploy-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}"
+
           sed -i \
-            "s/__BUILD_VERSION__/${GITHUB_SHA}/g" \
+            "s/__BUILD_VERSION__/${BUILD_VERSION}/g" \
             _site/service-worker.js
 
-          grep -q "${GITHUB_SHA}" _site/service-worker.js
+          printf 'window.AEGIS_RUNTIME_VERSION = "%s";\n' \
+            "${BUILD_VERSION}" \
+            > _site/runtime-version.js
+
+                      sed -i \
+            "s/__BUILD_VERSION__/${BUILD_VERSION}/g" \
+            _site/index.html
+
+          grep -q "${BUILD_VERSION}" _site/service-worker.js
+          grep -q "${BUILD_VERSION}" _site/runtime-version.js
+          grep -q "${BUILD_VERSION}" _site/index.html
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

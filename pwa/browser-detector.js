@@ -19,7 +19,7 @@
 
 const RUNTIME_INFO = Object.freeze({
     name: "Aegis Link PWA Runtime",
-    version: "1.0.0"
+    version: window.AEGIS_RUNTIME_VERSION || "development"
 });
 
 const BrowserDetector = (() => {
@@ -108,6 +108,133 @@ const BrowserDetector = (() => {
     return supportsServiceWorker();
 }
 
+function normalizeVersion(value) {
+
+    if (!value) {
+        return "Unknown";
+    }
+
+    return String(value).replace(/_/g, ".");
+
+}
+
+function getFallbackDeviceName() {
+
+    const ua = getUserAgent();
+
+    if (/iPad/i.test(ua)) return "iPad";
+    if (/iPhone/i.test(ua)) return "iPhone";
+    if (/iPod/i.test(ua)) return "iPod";
+    if (/Windows/i.test(ua)) return "Windows PC";
+    if (/Macintosh|Mac OS/i.test(ua)) return "Mac";
+    if (/Linux/i.test(ua) && !/Android/i.test(ua)) {
+        return "Linux Device";
+    }
+
+    if (/Android/i.test(ua)) {
+
+        const match = ua.match(
+            /Android[^;)]*;\s*(?:[a-z]{2}(?:-[A-Z]{2})?;\s*)?([^;)]+?)(?:\s+Build\/[^;)]+)?(?:;|\))/i
+        );
+
+        const model = match?.[1]?.trim();
+
+        if (
+            model &&
+            !["K", "wv", "Mobile"].includes(model)
+        ) {
+            return model;
+        }
+
+        return "Android Device";
+
+    }
+
+    return "Unknown";
+
+}
+
+function getFallbackOsVersion() {
+
+    const ua = getUserAgent();
+
+    const androidMatch = ua.match(/Android\s+([\d.]+)/i);
+
+    if (androidMatch) {
+        return normalizeVersion(androidMatch[1]);
+    }
+
+    const iosMatch = ua.match(
+        /(?:iPhone OS|CPU OS)\s+([\d_]+)/i
+    );
+
+    if (iosMatch) {
+        return normalizeVersion(iosMatch[1]);
+    }
+
+    const windowsMatch = ua.match(/Windows NT\s+([\d.]+)/i);
+
+    if (windowsMatch) {
+        return normalizeVersion(windowsMatch[1]);
+    }
+
+    const macMatch = ua.match(/Mac OS X\s+([\d_]+)/i);
+
+    if (macMatch) {
+        return normalizeVersion(macMatch[1]);
+    }
+
+    return "Unknown";
+
+}
+
+async function getDeviceMetadata() {
+
+    let deviceName = getFallbackDeviceName();
+    let osVersion = getFallbackOsVersion();
+
+    const userAgentData = navigator.userAgentData;
+
+    if (
+        userAgentData &&
+        typeof userAgentData.getHighEntropyValues === "function"
+    ) {
+
+        try {
+
+            const metadata =
+                await userAgentData.getHighEntropyValues([
+                    "model",
+                    "platformVersion"
+                ]);
+
+            if (metadata.model?.trim()) {
+                deviceName = metadata.model.trim();
+            }
+
+            if (metadata.platformVersion?.trim()) {
+                osVersion = normalizeVersion(
+                    metadata.platformVersion.trim()
+                );
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "[Aegis Runtime] Detailed device information unavailable:",
+                error
+            );
+
+        }
+
+    }
+
+    return {
+        deviceName,
+        osVersion
+    };
+
+}
     
     function getDeviceInfo() {
 
@@ -178,7 +305,13 @@ const BrowserDetector = (() => {
 
         getDeviceInfo,
 
-        getDeferredInstallPrompt() {
+getDeviceMetadata,
+
+getRuntimeVersion() {
+    return RUNTIME_INFO.version;
+},
+
+getDeferredInstallPrompt() {
             return deferredInstallPrompt;
         }
 
