@@ -1720,10 +1720,30 @@ if ("serviceWorker" in navigator) {
         }
       );
 
-      await registration.update();
+      const checkForUpdate = async () => {
+        try {
+          await registration.update();
+        } catch (error) {
+          console.error(
+            "[Aegis Link] Service worker update check failed:",
+            error
+          );
+        }
+      };
+
+      await checkForUpdate();
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          checkForUpdate();
+        }
+      });
+
+      window.addEventListener("focus", checkForUpdate);
+
     } catch (error) {
       console.error(
-        "[Aegis Link] Service worker update failed:",
+        "[Aegis Link] Service worker registration failed:",
         error
       );
     }
