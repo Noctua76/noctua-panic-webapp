@@ -1754,12 +1754,14 @@ if ("serviceWorker" in navigator) {
 <script src="runtime-version.js?v=__BUILD_VERSION__"></script>
 <script src="pwa/browser-detector.js?v=__BUILD_VERSION__"></script>
 <script src="pwa/installation-manager.js?v=__BUILD_VERSION__"></script>
+<script src="pwa/anonymous-install-client.js?v=__BUILD_VERSION__"></script>
 <script src="./runtime-client.js?v=__BUILD_VERSION__"></script>
 <script src="pwa/install-ui.js?v=__BUILD_VERSION__"></script>
 
 <script>
     InstallUI.initialize();
     InstallationManager.initialize();
+    AnonymousInstallClient.initialize(BACKEND_BASE);
 </script>
 
 </body>
