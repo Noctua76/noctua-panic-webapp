@@ -189,6 +189,43 @@ body{
   transform:scale(.97);
 }
 
+.read-only-banner{
+  display:none;
+  margin-bottom:14px;
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid
+    rgba(96,165,250,.45);
+  background:
+    rgba(37,99,235,.14);
+  color:#dbeafe;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.read-only-banner.visible{
+  display:block;
+}
+
+.read-only-banner strong{
+  display:block;
+  margin-bottom:2px;
+  color:#fff;
+  font-size:13px;
+}
+
+.read-only-access .alert-btn{
+  cursor:not-allowed;
+  filter:grayscale(.65);
+  opacity:.48;
+  box-shadow:none;
+}
+
+.read-only-access .alert-note::after{
+  content:" Προσωρινή πρόσβαση προβολής — η ενεργοποίηση συναγερμού είναι απενεργοποιημένη.";
+  color:#bfdbfe;
+}
+
     /* ========== Header ========== */
     .app-header{
       display:flex;
@@ -738,6 +775,20 @@ body{
 
     <!-- Main -->
     <main class="app-main">
+      <div
+  class="read-only-banner"
+  id="readOnlyBanner"
+  role="status"
+>
+  <strong>
+    Προσωρινή πρόσβαση μόνο για προβολή
+  </strong>
+
+  Δεν επιτρέπονται συναγερμοί, καταγραφές
+  συμβάντων, αποστολή τοποθεσίας ή QR scans.
+
+  <span id="readOnlyExpiry"></span>
+</div>
       <p class="hint-text">
         <strong>Έτοιμο για χρήση.</strong> Πατήστε <strong>ALERT</strong> μόνο σε περίπτωση πραγματικής απειλής.
       </p>
@@ -922,6 +973,151 @@ const guardNameEl = document.getElementById("guardName");
 const guardSiteEl = document.getElementById("guardSite");
 const gpsStatusEl = document.getElementById("gpsStatus");
 const guardLogoutBtn = document.getElementById("guardLogoutBtn");
+const readOnlyBannerEl =
+  document.getElementById(
+    "readOnlyBanner"
+  );
+
+const readOnlyExpiryEl =
+  document.getElementById(
+    "readOnlyExpiry"
+  );
+
+const alertButtonEl =
+  document.querySelector(".alert-btn");
+
+let temporaryAccessExpiryTimer = null;
+
+function isReadOnlyGuardSession(
+  sessionData = currentGuardSession
+) {
+  return (
+    sessionData?.guard?.access_mode ===
+    "read_only"
+  );
+}
+
+function getTemporaryAccessExpiry(
+  sessionData = currentGuardSession
+) {
+  const value =
+    sessionData?.guard?.access_expires_at;
+
+  if (!value) {
+    return null;
+  }
+
+  const expiry = new Date(value);
+
+  return Number.isNaN(expiry.getTime())
+    ? null
+    : expiry;
+}
+
+function clearGuardSessionStorage() {
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(
+    "guard_session_token"
+  );
+  localStorage.removeItem(
+    "guard_session"
+  );
+  localStorage.removeItem(
+    "aegis-current-guard"
+  );
+  localStorage.removeItem(
+    "aegis-guard-session"
+  );
+}
+
+function stopTemporaryAccessExpiryTimer() {
+  if (temporaryAccessExpiryTimer) {
+    clearTimeout(
+      temporaryAccessExpiryTimer
+    );
+
+    temporaryAccessExpiryTimer = null;
+  }
+}
+
+function expireTemporaryAccess() {
+  stopTemporaryAccessExpiryTimer();
+  clearGuardSessionStorage();
+
+  currentGuardSession = null;
+
+  stopGuardHeartbeat();
+  stopGuardLocationTracking();
+  showLoginScreen();
+
+  if (loginError) {
+    loginError.textContent =
+      "Η προσωρινή πρόσβαση έχει λήξει.";
+  }
+}
+
+function applyTemporaryAccessState(
+  sessionData
+) {
+  const readOnly =
+    isReadOnlyGuardSession(sessionData);
+
+  const expiry =
+    getTemporaryAccessExpiry(sessionData);
+
+  mainApp?.classList.toggle(
+    "read-only-access",
+    readOnly
+  );
+
+  readOnlyBannerEl?.classList.toggle(
+    "visible",
+    readOnly
+  );
+
+  if (alertButtonEl) {
+    alertButtonEl.disabled = readOnly;
+
+    alertButtonEl.setAttribute(
+      "aria-disabled",
+      readOnly ? "true" : "false"
+    );
+  }
+
+  if (readOnlyExpiryEl) {
+    readOnlyExpiryEl.textContent =
+      readOnly && expiry
+        ? ` Η πρόσβαση λήγει ${expiry.toLocaleString(
+            "el-GR"
+          )}.`
+        : "";
+  }
+
+  stopTemporaryAccessExpiryTimer();
+
+  if (!readOnly || !expiry) {
+    return true;
+  }
+
+  const remainingMs =
+    expiry.getTime() - Date.now();
+
+  if (remainingMs <= 0) {
+    expireTemporaryAccess();
+    return false;
+  }
+
+  temporaryAccessExpiryTimer =
+    setTimeout(
+      expireTemporaryAccess,
+      Math.min(
+        remainingMs,
+        2147483647
+      )
+    );
+
+  return true;
+}
 
 function loadSavedGuardSession() {
   try {
@@ -936,6 +1132,14 @@ function loadSavedGuardSession() {
 function showMainApp(sessionData) {
   currentGuardSession = sessionData;
 
+  if (
+  !applyTemporaryAccessState(
+    sessionData
+  )
+) {
+  return;
+}
+
   if (loginScreen) loginScreen.classList.add("hidden");
   if (mainApp) mainApp.classList.remove("hidden");
 
@@ -947,25 +1151,60 @@ function showMainApp(sessionData) {
     guardSiteEl.textContent = sessionData.guard?.site_id || "-";
   }
   startGuardHeartbeat();
+
+if (
+  isReadOnlyGuardSession(
+    sessionData
+  )
+) {
+  stopGuardLocationTracking();
+
+  if (gpsStatusEl) {
+    gpsStatusEl.textContent =
+      "Disabled · Read only";
+  }
+} else {
   startGuardLocationTracking();
+}
 }
 
 function showLoginScreen() {
   currentGuardSession = null;
+  stopTemporaryAccessExpiryTimer();
 
   if (mainApp) mainApp.classList.add("hidden");
   if (loginScreen) loginScreen.classList.remove("hidden");
 }
 
 function enforceMainAppSession() {
-  const savedSession = loadSavedGuardSession();
+  const savedSession =
+    loadSavedGuardSession();
 
-  if (!savedSession?.guard || !savedSession?.session) {
+  const expiry =
+    getTemporaryAccessExpiry(
+      savedSession
+    );
+
+  const isExpired =
+    isReadOnlyGuardSession(
+      savedSession
+    ) &&
+    expiry &&
+    expiry.getTime() <= Date.now();
+
+  if (
+    !savedSession?.guard ||
+    !savedSession?.session ||
+    isExpired
+  ) {
     currentGuardSession = null;
+
+    if (isExpired) {
+      clearGuardSessionStorage();
+    }
 
     stopGuardHeartbeat();
     stopGuardLocationTracking();
-
     showLoginScreen();
   }
 }
@@ -982,10 +1221,7 @@ async function logoutGuard() {
   } catch (err) {
     console.error("Guard logout backend error:", err);
   } finally {
-    localStorage.removeItem(SESSION_KEY);
-localStorage.removeItem("guard_session");
-localStorage.removeItem("aegis-current-guard");
-localStorage.removeItem("aegis-guard-session");
+    clearGuardSessionStorage();
 
 currentGuardSession = null;
 
@@ -1003,7 +1239,12 @@ let guardLocationWatchId = null;
 let latestGuardLocation = null;
 
 async function sendGuardLocation(position) {
-  if (!currentGuardSession?.guard?.id) return;
+  if (
+  !currentGuardSession?.guard?.id ||
+  isReadOnlyGuardSession()
+) {
+  return;
+}
 
   const coords = position.coords;
   if (gpsStatusEl) {
@@ -1081,6 +1322,15 @@ if (gpsStatusEl) {
 function startGuardLocationTracking() {
   stopGuardLocationTracking();
 
+  if (isReadOnlyGuardSession()) {
+  if (gpsStatusEl) {
+    gpsStatusEl.textContent =
+      "Disabled · Read only";
+  }
+
+  return;
+}
+
   if (!navigator.geolocation) {
     console.warn("Geolocation is not supported on this device.");
     return;
@@ -1130,11 +1380,24 @@ async function sendGuardHeartbeat() {
   }
 
   try {
-    await fetch(`${BACKEND_BASE}/guard/heartbeat`, {
-  method: "POST",
-  headers: getGuardAuthHeaders(),
-  body: JSON.stringify({})
-});
+    const response = await fetch(
+  `${BACKEND_BASE}/guard/heartbeat`,
+  {
+    method: "POST",
+    headers: getGuardAuthHeaders(),
+    body: JSON.stringify({}),
+  }
+);
+
+if (
+  isReadOnlyGuardSession() &&
+  (
+    response.status === 401 ||
+    response.status === 403
+  )
+) {
+  expireTemporaryAccess();
+}
   } catch (err) {
     console.error("Guard heartbeat failed:", err);
   }
@@ -1205,7 +1468,13 @@ RuntimeClient.report(BACKEND_BASE, {
 
   } catch (err) {
     console.error("Guard login failed:", err);
-    if (loginError) loginError.textContent = "Λάθος στοιχεία ή πρόβλημα σύνδεσης.";
+    if (loginError) {
+  loginError.textContent =
+    err.message ===
+    "Temporary access has expired"
+      ? "Η προσωρινή πρόσβαση έχει λήξει."
+      : "Λάθος στοιχεία ή πρόβλημα σύνδεσης.";
+}
   } finally {
     if (guardLoginBtn) guardLoginBtn.textContent = "Login";
   }
@@ -1239,7 +1508,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   const $ = (s) => document.querySelector(s);
 
   // Βασικά στοιχεία UI
-  const alertBtn        = $('.alert-btn');
+  const alertBtn = alertButtonEl;
   const statusCard      = $('.status-card');
   const modalBackdrop   = $('.modal-backdrop');
   const countdownEl     = $('.modal-countdown');
@@ -1260,6 +1529,9 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   }
 
   function openConfirmModal() {
+    if (isReadOnlyGuardSession()) {
+  return;
+}
     if (!modalBackdrop) return;
     modalBackdrop.classList.remove('hidden');
 
@@ -1320,6 +1592,9 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   }
 
   async function handleAlertConfirmed() {
+    if (isReadOnlyGuardSession()) {
+  return;
+}
     if (statusCard) {
       statusCard.classList.remove('hidden');
     }
@@ -1368,6 +1643,11 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 
   // ===== ALERT προς backend =====
   async function triggerAlert() {
+    if (isReadOnlyGuardSession()) {
+  throw new Error(
+    "Read-only access cannot activate alerts."
+  );
+}
     const endpoint = `${BACKEND_BASE}/alert`;
 
     const payload = {
@@ -1395,6 +1675,9 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 
   // ===== Incident log προς backend /incident-log (AI Assistant) =====
   async function sendIncidentToBackend(message) {
+    if (isReadOnlyGuardSession()) {
+  return;
+}
     try {
       const endpoint = `${BACKEND_BASE}/incident-log`;
 
@@ -1428,6 +1711,9 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 
   // ===== Detailed incident log προς backend (3 answers) =====
   async function sendIncidentDetailsToBackend(answers) {
+    if (isReadOnlyGuardSession()) {
+  return;
+}
     const endpoint = `${BACKEND_BASE}/incident-log`;
 
     const payload = {

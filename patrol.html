@@ -369,6 +369,30 @@ h1{
   font-size:11px;
   padding-bottom:6px;
 }
+
+.read-only-banner{
+  display:none;
+  padding:14px 16px;
+  border:1px solid
+    rgba(96,165,250,.45);
+  border-radius:20px;
+  background:
+    rgba(37,99,235,.14);
+  color:#dbeafe;
+  font-size:12px;
+  line-height:1.5;
+}
+
+.read-only-banner.visible{
+  display:block;
+}
+
+.read-only-banner strong{
+  display:block;
+  margin-bottom:3px;
+  color:#fff;
+  font-size:13px;
+}
 </style>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -407,6 +431,22 @@ h1{
       </div>
     </div>
   </header>
+
+  <section
+  class="read-only-banner"
+  id="readOnlyBanner"
+  role="status"
+>
+  <strong>
+    Προσωρινή πρόσβαση μόνο για προβολή
+  </strong>
+
+  Μπορείτε να δείτε τις περιπολίες, αλλά το
+  QR scan, η κάμερα, το GPS και τα push
+  notifications είναι απενεργοποιημένα.
+
+  <span id="readOnlyExpiry"></span>
+</section>
 
   <section class="summary" id="summary"></section>
 
@@ -489,6 +529,15 @@ const qrReaderElement = document.getElementById("qr-reader");
 const resultBox = document.getElementById("resultBox");
 const manualRefreshBtn = document.getElementById("manualRefreshBtn");
 const autoRefreshLabel = document.getElementById("autoRefreshLabel");
+const readOnlyBannerEl =
+  document.getElementById(
+    "readOnlyBanner"
+  );
+
+const readOnlyExpiryEl =
+  document.getElementById(
+    "readOnlyExpiry"
+  );
 
 let guardSession = null;
 let patrols = [];
@@ -497,7 +546,117 @@ let selectedPatrol = null;
 let html5QrCode = null;
 let isProcessing = false;
 let lastCompletedMessage = null;
+let temporaryAccessExpiryTimer = null;
 
+function isReadOnlySession(){
+  return (
+    guardSession?.guard?.access_mode ===
+    "read_only"
+  );
+}
+
+function getTemporaryAccessExpiry(){
+  const value =
+    guardSession?.guard?.access_expires_at;
+
+  if(!value){
+    return null;
+  }
+
+  const expiry = new Date(value);
+
+  return Number.isNaN(expiry.getTime())
+    ? null
+    : expiry;
+}
+
+function clearGuardSession(){
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(
+    "guard_session_token"
+  );
+  localStorage.removeItem(
+    "guard_session"
+  );
+  localStorage.removeItem(
+    "aegis-current-guard"
+  );
+  localStorage.removeItem(
+    "aegis-guard-session"
+  );
+}
+
+function expireTemporaryAccess(){
+  if(temporaryAccessExpiryTimer){
+    clearTimeout(
+      temporaryAccessExpiryTimer
+    );
+
+    temporaryAccessExpiryTimer = null;
+  }
+
+  clearGuardSession();
+
+  window.location.replace(
+    "index.html"
+  );
+}
+
+function applyTemporaryAccessState(){
+  const readOnly =
+    isReadOnlySession();
+
+  const expiry =
+    getTemporaryAccessExpiry();
+
+  readOnlyBannerEl?.classList.toggle(
+    "visible",
+    readOnly
+  );
+
+  scanPanel.style.display =
+    readOnly ? "none" : "";
+
+  if(readOnlyExpiryEl){
+    readOnlyExpiryEl.textContent =
+      readOnly && expiry
+        ? ` Η πρόσβαση λήγει ${expiry.toLocaleString(
+            "el-GR"
+          )}.`
+        : "";
+  }
+
+  if(temporaryAccessExpiryTimer){
+    clearTimeout(
+      temporaryAccessExpiryTimer
+    );
+
+    temporaryAccessExpiryTimer = null;
+  }
+
+  if(!readOnly || !expiry){
+    return true;
+  }
+
+  const remainingMs =
+    expiry.getTime() - Date.now();
+
+  if(remainingMs <= 0){
+    expireTemporaryAccess();
+    return false;
+  }
+
+  temporaryAccessExpiryTimer =
+    setTimeout(
+      expireTemporaryAccess,
+      Math.min(
+        remainingMs,
+        2147483647
+      )
+    );
+
+  return true;
+}
 function loadSession(){
   try{
     const saved = localStorage.getItem(SESSION_KEY);
@@ -514,6 +673,10 @@ function enforceSession(){
     window.location.replace("index.html");
     return false;
   }
+
+  if(!applyTemporaryAccessState()){
+  return false;
+}
 
   guardNameEl.textContent = guardSession.guard.full_name || guardSession.guard.username || "-";
   sessionIdEl.textContent = guardSession.session.id;
@@ -608,7 +771,9 @@ function renderHero(groups){
     return;
   }
 
-  const canScan = next.scan_enabled === true;
+  const canScan =
+  !isReadOnlySession() &&
+  next.scan_enabled === true;
 
   heroEl.innerHTML = `
     <div class="hero-kicker">Next Patrol</div>
@@ -634,7 +799,10 @@ function renderHero(groups){
 }
 
 function renderPatrolCard(patrol, allowScan = false){
-  const canScan = allowScan && patrol.scan_enabled === true;
+  const canScan =
+  !isReadOnlySession() &&
+  allowScan &&
+  patrol.scan_enabled === true;
 
   const article = document.createElement("article");
   article.className = "patrol-item";
@@ -714,9 +882,37 @@ async function loadPatrolBoard(){
     const sessionId = guardSession.session.id;
 
     const response = await fetch(
-      `${API_BASE_URL}/guard/patrols/board?guard_id=${guardId}&session_id=${sessionId}`,
-      { cache:"no-store" }
+  `${API_BASE_URL}/guard/patrols/board?guard_id=${guardId}&session_id=${sessionId}`,
+  {
+    cache:"no-store",
+
+    headers:{
+      Authorization:
+        `Bearer ${
+          localStorage.getItem(
+            "guard_session_token"
+          ) || ""
+        }`
+    }
+  }
+);
+
+if(
+  response.status === 401 ||
+  response.status === 403
+){
+  if(isReadOnlySession()){
+    expireTemporaryAccess();
+  }else{
+    clearGuardSession();
+
+    window.location.replace(
+      "index.html"
     );
+  }
+
+  return;
+}
 
     const data = await response.json();
 
@@ -727,7 +923,10 @@ async function loadPatrolBoard(){
     patrols = data.patrols || [];
     completedPatrols = data.completed_patrols || [];
     siteNameEl.textContent = data.site?.name || guardSession.guard.site_id || "-";
-    moduleStatusEl.textContent = "Ready";
+    moduleStatusEl.textContent =
+  isReadOnlySession()
+    ? "Read only"
+    : "Ready";
 
     autoRefreshLabel.textContent = `Updated · ${new Date().toLocaleTimeString("el-GR",{hour:"2-digit",minute:"2-digit"})}`;
 
@@ -798,6 +997,9 @@ function getCurrentPosition(){
 }
 
 function selectPatrol(patrol){
+  if(isReadOnlySession()){
+  return;
+}
   selectedPatrol = patrol;
   clearResult();
 
@@ -827,6 +1029,11 @@ async function stopScanner(){
 }
 
 async function submitScan(scannedQrToken){
+  if(isReadOnlySession()){
+  throw new Error(
+    "Read-only access cannot submit patrol scans."
+  );
+}
   if(!selectedPatrol) throw new Error("No patrol selected.");
   if(!scannedQrToken) throw new Error("Invalid patrol QR. Token is missing.");
 
@@ -902,6 +1109,9 @@ setTimeout(() => {
 }
 
 async function startScanner(){
+  if(isReadOnlySession()){
+  return;
+}
   if(!selectedPatrol || isProcessing) return;
 
   clearResult();
@@ -978,25 +1188,45 @@ manualRefreshBtn.addEventListener("click",loadPatrolBoard);
 startScanBtn.addEventListener("click",startScanner);
 stopBtn.addEventListener("click",stopScanner);
 
-window.addEventListener("pageshow",()=>{
-  enforceSession();
-  loadPatrolBoard();
-});
-
-document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState === "visible"){
-    loadPatrolBoard();
+window.addEventListener(
+  "pageshow",
+  ()=>{
+    if(enforceSession()){
+      loadPatrolBoard();
+    }
   }
-});
+);
 
-async function initializePatrolModule() {
-  enforceSession();
+document.addEventListener(
+  "visibilitychange",
+  ()=>{
+    if(
+      document.visibilityState ===
+        "visible" &&
+      enforceSession()
+    ){
+      loadPatrolBoard();
+    }
+  }
+);
 
-  await initializePushNotifications(guardSession);
+async function initializePatrolModule(){
+  if(!enforceSession()){
+    return;
+  }
+
+  if(!isReadOnlySession()){
+    await initializePushNotifications(
+      guardSession
+    );
+  }
 
   await loadPatrolBoard();
 
-  setInterval(loadPatrolBoard, 30000);
+  setInterval(
+    loadPatrolBoard,
+    30000
+  );
 }
 
 initializePatrolModule();
