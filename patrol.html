@@ -286,6 +286,7 @@ h1{
 .badge.overdue{background:rgba(239,68,68,.15);color:#fecaca;border:1px solid rgba(239,68,68,.45)}
 .badge.missed{background:rgba(127,29,29,.35);color:#fecaca;border:1px solid rgba(239,68,68,.38)}
 .badge.completed{background:rgba(34,197,94,.15);color:#bbf7d0;border:1px solid rgba(34,197,94,.45)}
+.badge.completed_late{background:rgba(245,158,11,.15);color:#fde68a;border:1px solid rgba(245,158,11,.45)}
 
 .empty{
   border-radius:20px;
@@ -709,7 +710,8 @@ function labelStatus(status){
     due_soon:"Due Soon",
     overdue:"Overdue",
     missed:"Missed",
-    completed:"Completed"
+    completed:"Completed",
+    completed_late:"Completed Late"
   })[status] || status || "-";
 }
 
@@ -726,6 +728,7 @@ function getWindowText(patrol){
   if(patrol.status === "overdue") return "Scan allowed before missed";
   if(patrol.status === "missed") return "Scan closed";
   if(patrol.status === "completed") return "Already completed";
+  if(patrol.status === "completed_late") return "Completed after scheduled time";
 
   return "-";
 }
@@ -1091,8 +1094,18 @@ async function submitScan(scannedQrToken){
     data.scan_window?.scheduled_at ||
     selectedPatrol.scheduled_at;
 
-  moduleStatusEl.textContent = "Completed";
-  startScanBtn.textContent = "Completed";
+  const completionStatus =
+    data.patrol?.completion_status === "completed_late"
+      ? "Completed Late"
+      : "Completed";
+
+  const delayMinutes = Math.max(
+    0,
+    Number(data.patrol?.delay_minutes || 0)
+  );
+
+  moduleStatusEl.textContent = completionStatus;
+  startScanBtn.textContent = completionStatus;
   startScanBtn.disabled = true;
 
   showResult("success",`
@@ -1100,15 +1113,19 @@ async function submitScan(scannedQrToken){
     Checkpoint: ${data.checkpoint?.name || selectedPatrol.checkpoint || "-"}<br>
     Scheduled: ${formatTime(resolvedScheduledAt)}<br>
     Recorded: ${recordedAt}<br>
+    Delay: ${delayMinutes} min<br>
+    Status: ${completionStatus}<br>
     GPS Accuracy: ${Math.round(location.accuracy)}m
   `);
 
   lastCompletedMessage = `
-    <div class="hero-kicker">Completed</div>
-    <div class="hero-title">✔ Patrol Completed</div>
+    <div class="hero-kicker">${completionStatus}</div>
+    <div class="hero-title">✔ Patrol ${completionStatus}</div>
     <div class="hero-time">${selectedPatrol.checkpoint || "-"} · ${recordedAt}</div>
     <div class="hero-meta">
       <div class="row"><span>Scheduled</span><strong>${formatTime(resolvedScheduledAt)}</strong></div>
+      <div class="row"><span>Delay</span><strong>${delayMinutes} min</strong></div>
+      <div class="row"><span>Status</span><strong>${completionStatus}</strong></div>
       <div class="row"><span>GPS Accuracy</span><strong>${Math.round(location.accuracy)}m</strong></div>
     </div>
   `;
