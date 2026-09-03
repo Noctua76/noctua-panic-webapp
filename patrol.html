@@ -1048,10 +1048,6 @@ async function submitScan(scannedQrToken){
 
   const payload = {
     schedule_id:selectedPatrol.schedule_id,
-    schedule_type:selectedPatrol.schedule_type,
-    scheduled_at:selectedPatrol.scheduled_at,
-    guard_id:guardSession.guard.id,
-    session_id:guardSession.session.id,
     qr_token:scannedQrToken,
     latitude:location.latitude,
     longitude:location.longitude,
@@ -1060,11 +1056,28 @@ async function submitScan(scannedQrToken){
 
   const response = await fetch(`${API_BASE_URL}/patrol/scan`,{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
+    headers:{
+      "Content-Type":"application/json",
+      Authorization:
+        `Bearer ${
+          localStorage.getItem(
+            "guard_session_token"
+          ) || ""
+        }`
+    },
     body:JSON.stringify(payload)
   });
 
   const data = await response.json();
+
+  if(
+    response.status === 401 ||
+    data.code === "TEMPORARY_ACCESS_EXPIRED"
+  ){
+    clearGuardSession();
+    window.location.replace("index.html");
+    return;
+  }
 
   if(!response.ok || data.status !== "ok"){
     throw new Error(data.message || "Patrol scan failed.");
@@ -1074,6 +1087,10 @@ async function submitScan(scannedQrToken){
     ? new Date(data.patrol.patrol_time).toLocaleString("el-GR",{timeZone:"Europe/Athens"})
     : new Date().toLocaleString("el-GR",{timeZone:"Europe/Athens"});
 
+  const resolvedScheduledAt =
+    data.scan_window?.scheduled_at ||
+    selectedPatrol.scheduled_at;
+
   moduleStatusEl.textContent = "Completed";
   startScanBtn.textContent = "Completed";
   startScanBtn.disabled = true;
@@ -1081,7 +1098,7 @@ async function submitScan(scannedQrToken){
   showResult("success",`
     <strong>Patrol Completed Successfully</strong><br>
     Checkpoint: ${data.checkpoint?.name || selectedPatrol.checkpoint || "-"}<br>
-    Scheduled: ${formatTime(selectedPatrol.scheduled_at)}<br>
+    Scheduled: ${formatTime(resolvedScheduledAt)}<br>
     Recorded: ${recordedAt}<br>
     GPS Accuracy: ${Math.round(location.accuracy)}m
   `);
@@ -1091,7 +1108,7 @@ async function submitScan(scannedQrToken){
     <div class="hero-title">✔ Patrol Completed</div>
     <div class="hero-time">${selectedPatrol.checkpoint || "-"} · ${recordedAt}</div>
     <div class="hero-meta">
-      <div class="row"><span>Scheduled</span><strong>${formatTime(selectedPatrol.scheduled_at)}</strong></div>
+      <div class="row"><span>Scheduled</span><strong>${formatTime(resolvedScheduledAt)}</strong></div>
       <div class="row"><span>GPS Accuracy</span><strong>${Math.round(location.accuracy)}m</strong></div>
     </div>
   `;
