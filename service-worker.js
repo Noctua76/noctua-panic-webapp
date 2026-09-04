@@ -1,5 +1,9 @@
 const SERVICE_WORKER_VERSION = "__BUILD_VERSION__";
 
+function resolveAppUrl(path = "") {
+  return new URL(path, self.registration.scope).href;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -19,8 +23,8 @@ self.addEventListener("push", (event) => {
 
   const options = {
     body: data.body,
-    icon: "/android-chrome-192x192.png",
-    badge: "/android-chrome-192x192.png",
+    icon: resolveAppUrl("android-chrome-192x192.png"),
+    badge: resolveAppUrl("android-chrome-192x192.png"),
     vibrate: [300, 100, 300],
     tag: data.schedule_id || "patrol",
     requireInteraction: true,
@@ -35,8 +39,7 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const fallbackUrl = "/noctua-panic-webapp/patrol.html";
-  const targetUrl = event.notification.data?.url || fallbackUrl;
+  const targetUrl = resolveAppUrl(event.notification.data?.url || "patrol.html");
 
   event.waitUntil(
     clients.matchAll({
@@ -44,7 +47,7 @@ self.addEventListener("notificationclick", (event) => {
       includeUncontrolled: true,
     }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url.includes("/noctua-panic-webapp/patrol.html")) {
+        if (client.url.startsWith(self.registration.scope)) {
           client.focus();
           return client.navigate(targetUrl);
         }
