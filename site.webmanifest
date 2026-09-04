@@ -1,6 +1,7 @@
 {
   "name": "Aegis Link",
   "short_name": "Aegis",
+  "lang": "en",
   "description": "AI security incident response platform",
   "id": "./",
   "start_url": "./",
