@@ -821,7 +821,7 @@ body{
         <div class="alert-label">
           <span>Panic Mode</span>
           <strong>ALERT</strong>
-          <p class="alert-description">Ενεργοποίηση άμεσης ειδοποίησης σε 3 επαφές (κλήσεις + SMS).</p>
+          <p class="alert-description">Ενεργοποίηση άμεσης ειδοποίησης στις προκαθορισμένες επαφές (κλήσεις + SMS).</p>
         </div>
 
         <button class="alert-btn" type="button">
@@ -850,36 +850,20 @@ body{
 
         <div class="status-section">
           <div class="status-section-title">📞 Κλήσεις</div>
-          <ul class="status-list">
+          <ul class="status-list" id="alertCallStatusList">
             <li>
-              <span>Αριθμός 1</span>
-              <span class="status-pill-small pending">Καλείται…</span>
-            </li>
-            <li>
-              <span>Αριθμός 2</span>
-              <span class="status-pill-small pending">Σε ουρά…</span>
-            </li>
-            <li>
-              <span>Αριθμός 3</span>
-              <span class="status-pill-small ok">Απαντήθηκε 14:33</span>
+              <span>—</span>
+              <span class="status-pill-small pending">Αναμονή…</span>
             </li>
           </ul>
         </div>
 
         <div class="status-section">
           <div class="status-section-title">📩 SMS</div>
-          <ul class="status-list">
+          <ul class="status-list" id="alertSmsStatusList">
             <li>
-              <span>SMS 1</span>
-              <span class="status-pill-small ok">Παραδόθηκε ✔️</span>
-            </li>
-            <li>
-              <span>SMS 2</span>
-              <span class="status-pill-small pending">Σε αναμονή…</span>
-            </li>
-            <li>
-              <span>SMS 3</span>
-              <span class="status-pill-small ok">Παραδόθηκε ✔️</span>
+              <span>—</span>
+              <span class="status-pill-small pending">Αναμονή…</span>
             </li>
           </ul>
         </div>
@@ -1527,6 +1511,8 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   const countdownEl     = $('.modal-countdown');
   const statusBadge     = document.querySelector('.status-badge');
   const timeFromStartEl = document.querySelector('.status-row strong');
+  const callStatusList  = document.querySelector('#alertCallStatusList');
+  const smsStatusList   = document.querySelector('#alertSmsStatusList');
 
   // Καταστάσεις
   let countdownTimer    = null;
@@ -1619,9 +1605,12 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       statusBadge.textContent = 'Ειδοποίηση σε εξέλιξη';
     }
 
+    renderPendingAlertNotifications();
+
     try {
       // 1) Ενεργοποίηση κλήσεων / SMS
-      await triggerAlert();
+      const alertResult = await triggerAlert();
+      renderAlertNotifications(alertResult);
 
       // 2) Αποστολή incident log στο backend για AI καταγραφή
       const baseMessage =
@@ -1630,6 +1619,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 
     } catch (err) {
       console.error('Σφάλμα κατά την ενεργοποίηση:', err);
+      renderAlertFailure();
       if (statusBadge) {
         statusBadge.textContent = 'Σφάλμα – απαιτείται έλεγχος';
       }
@@ -1639,6 +1629,83 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     setTimeout(() => {
       startIncidentFlowUI();
     }, 15000); // 15" για δοκιμή – μετά 300000 (5 λεπτά)
+  }
+
+  function renderPendingAlertNotifications() {
+    const pendingRow = `
+      <li>
+        <span>Αναμονή στοιχείων…</span>
+        <span class="status-pill-small pending">Σε εξέλιξη…</span>
+      </li>
+    `;
+
+    if (callStatusList) callStatusList.innerHTML = pendingRow;
+    if (smsStatusList) smsStatusList.innerHTML = pendingRow;
+  }
+
+  function renderNotificationRows(listElement, notifications, successText) {
+    if (!listElement) return;
+
+    if (!Array.isArray(notifications) || notifications.length === 0) {
+      listElement.innerHTML = `
+        <li>
+          <span>Δεν υπάρχει παραλήπτης</span>
+          <span class="status-pill-small pending">Δεν εκτελέστηκε</span>
+        </li>
+      `;
+      return;
+    }
+
+    listElement.innerHTML = notifications.map((notification) => {
+      const submitted = notification.status === 'submitted';
+      const phone = notification.phone || 'Άγνωστος αριθμός';
+      const label = submitted ? successText : 'Απέτυχε';
+      const statusClass = submitted ? 'ok' : 'failed';
+
+      return `
+        <li>
+          <span>${escapeHtml(phone)}</span>
+          <span class="status-pill-small ${statusClass}">${label}</span>
+        </li>
+      `;
+    }).join('');
+  }
+
+  function renderAlertNotifications(alertResult) {
+    const notifications = alertResult?.notifications || {};
+
+    renderNotificationRows(
+      callStatusList,
+      notifications.voice,
+      'Υποβλήθηκε για κλήση'
+    );
+
+    renderNotificationRows(
+      smsStatusList,
+      notifications.sms,
+      'Υποβλήθηκε για αποστολή'
+    );
+  }
+
+  function renderAlertFailure() {
+    const failedRow = `
+      <li>
+        <span>Η αποστολή δεν ολοκληρώθηκε</span>
+        <span class="status-pill-small failed">Απέτυχε</span>
+      </li>
+    `;
+
+    if (callStatusList) callStatusList.innerHTML = failedRow;
+    if (smsStatusList) smsStatusList.innerHTML = failedRow;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   function startActiveTimer() {
@@ -1681,9 +1748,15 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   body: JSON.stringify(payload)
 });
 
+    const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      throw new Error('Alert request failed with status ' + response.status);
+      throw new Error(
+        data.message || 'Alert request failed with status ' + response.status
+      );
     }
+
+    return data;
   }
 
   // ===== Incident log προς backend /incident-log (AI Assistant) =====
