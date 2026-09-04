@@ -2,6 +2,7 @@
   "name": "Aegis Link",
   "short_name": "Aegis",
   "description": "AI security incident response platform",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
