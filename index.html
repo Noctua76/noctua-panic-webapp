@@ -1211,6 +1211,13 @@ function enforceMainAppSession() {
 async function logoutGuard() {
   try {
     if (currentGuardSession?.guard_session_token) {
+  try {
+    const { unsubscribePushNotifications } = await import("./push.js");
+    await unsubscribePushNotifications();
+  } catch (err) {
+    console.error("Guard push unsubscribe error:", err);
+  }
+
   await fetch(`${BACKEND_BASE}/guard/logout`, {
     method: "POST",
     headers: getGuardAuthHeaders(),
@@ -1464,6 +1471,16 @@ RuntimeClient.report(BACKEND_BASE, {
   console.error("Runtime registration failed:", error);
 });
     showMainApp(data);
+
+    if (!isReadOnlyGuardSession(data)) {
+      import("./push.js")
+        .then(({ initializePushNotifications }) =>
+          initializePushNotifications(data)
+        )
+        .catch((error) => {
+          console.error("Push initialization failed:", error);
+        });
+    }
 
   } catch (err) {
     console.error("Guard login failed:", err);

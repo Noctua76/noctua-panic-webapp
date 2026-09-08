@@ -108,17 +108,23 @@ async function sendSubscriptionToBackend(subscription, guardSession) {
 
   const payload = {
     subscription,
-    guard_id: guardSession.guard.id,
-    session_id: guardSession.session.id,
     user_agent: navigator.userAgent,
     device_name: "Web PWA",
   };
+
+  const sessionToken = localStorage.getItem("guard_session_token");
+
+  if (!sessionToken) {
+    console.warn("Guard session token is missing. Push subscription was not sent.");
+    return false;
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/push/subscribe`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${sessionToken}`,
       },
       body: JSON.stringify(payload),
     });
@@ -141,7 +147,55 @@ async function sendSubscriptionToBackend(subscription, guardSession) {
 
 async function renewSubscription() {}
 
-async function unsubscribe() {}
+export async function unsubscribePushNotifications() {
+  if (!("serviceWorker" in navigator)) {
+    return true;
+  }
+
+  const registration =
+    serviceWorkerRegistration ||
+    await navigator.serviceWorker.getRegistration();
+
+  if (!registration || !("PushManager" in window)) {
+    return true;
+  }
+
+  const subscription = await registration.pushManager.getSubscription();
+
+  if (!subscription) {
+    return true;
+  }
+
+  const sessionToken = localStorage.getItem("guard_session_token");
+
+  if (sessionToken) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/push/unsubscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn("Push subscription backend deactivation failed.");
+      }
+    } catch (err) {
+      console.warn("Unable to deactivate push subscription in backend:", err);
+    }
+  }
+
+  try {
+    return await subscription.unsubscribe();
+  } catch (err) {
+    console.warn("Browser push unsubscribe failed:", err);
+    return false;
+  }
+}
 
 export async function initializePushNotifications(guardSession) {
   console.log("Initializing Push Notifications...");
