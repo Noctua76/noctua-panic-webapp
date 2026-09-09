@@ -197,27 +197,55 @@ export async function unsubscribePushNotifications() {
   }
 }
 
-export async function initializePushNotifications(guardSession) {
+export async function initializePushNotifications(
+  guardSession,
+  { requestPermission = false } = {}
+) {
   console.log("Initializing Push Notifications...");
+
+  if (!("Notification" in window)) {
+    return { status: "unsupported" };
+  }
 
   const registration = await registerServiceWorker();
 
   if (!registration) {
-    return;
+    return { status: "service_worker_failed" };
   }
 
-  const permissionGranted = await requestNotificationPermission();
+  let permission = Notification.permission;
 
-  if (!permissionGranted) {
+  if (permission === "default" && !requestPermission) {
+    return { status: "permission_required" };
+  }
+
+  if (permission === "default" && requestPermission) {
+    const permissionGranted = await requestNotificationPermission();
+    permission = Notification.permission;
+
+    if (!permissionGranted) {
+      return {
+        status: permission === "denied" ? "permission_denied" : "permission_required",
+      };
+    }
+  }
+
+  if (permission !== "granted") {
     console.warn("Notification permission was denied.");
-    return;
+    return { status: "permission_denied" };
   }
 
   const subscription = await subscribeDevice();
 
   if (!subscription) {
-    return;
+    return { status: "subscription_failed" };
   }
 
-  await sendSubscriptionToBackend(subscription, guardSession);
+  const backendRegistered =
+    await sendSubscriptionToBackend(subscription, guardSession);
+
+  return {
+    status: backendRegistered ? "enabled" : "backend_registration_failed",
+    endpoint: subscription.endpoint,
+  };
 }

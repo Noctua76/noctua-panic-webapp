@@ -394,6 +394,53 @@ h1{
   color:#fff;
   font-size:13px;
 }
+
+.notification-panel{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:14px;
+  padding:14px 16px;
+  border:1px solid rgba(96,165,250,.28);
+  border-radius:16px;
+  background:rgba(15,23,42,.82);
+}
+
+.notification-panel.hidden{
+  display:none;
+}
+
+.notification-copy strong{
+  display:block;
+  margin-bottom:4px;
+  color:#fff;
+  font-size:14px;
+}
+
+.notification-copy span{
+  color:#bfdbfe;
+  font-size:12px;
+  line-height:1.45;
+}
+
+.notification-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+}
+
+@media(max-width:640px){
+  .notification-panel{
+    align-items:stretch;
+    flex-direction:column;
+  }
+
+  .notification-actions{
+    justify-content:flex-start;
+  }
+}
 </style>
 
 <script src="https://unpkg.com/html5-qrcode"></script>
@@ -448,6 +495,21 @@ h1{
 
   <span id="readOnlyExpiry"></span>
 </section>
+
+  <section class="notification-panel" id="notificationPanel" role="status">
+    <div class="notification-copy">
+      <strong>Patrol Notifications</strong>
+      <span id="notificationStatusText">Checking device registration…</span>
+    </div>
+    <div class="notification-actions">
+      <button class="btn btn-blue" id="enableNotificationsBtn" type="button">
+        Enable Notifications
+      </button>
+      <button class="btn btn-ghost" id="testNotificationBtn" type="button" disabled>
+        Send Test
+      </button>
+    </div>
+  </section>
 
   <section class="summary" id="summary"></section>
 
@@ -534,6 +596,10 @@ const readOnlyBannerEl =
   document.getElementById(
     "readOnlyBanner"
   );
+const notificationPanelEl = document.getElementById("notificationPanel");
+const notificationStatusTextEl = document.getElementById("notificationStatusText");
+const enableNotificationsBtn = document.getElementById("enableNotificationsBtn");
+const testNotificationBtn = document.getElementById("testNotificationBtn");
 
 const readOnlyExpiryEl =
   document.getElementById(
@@ -554,6 +620,73 @@ function isReadOnlySession(){
     guardSession?.guard?.access_mode ===
     "read_only"
   );
+}
+
+function renderNotificationStatus(result){
+  const status = result?.status || "unknown";
+
+  const messages = {
+    enabled: "Enabled and registered for this guard session.",
+    permission_required: "Permission required. Tap Enable Notifications.",
+    permission_denied: "Blocked by device settings. Allow notifications for the Guard domain.",
+    unsupported: "Push notifications are not supported by this browser.",
+    service_worker_failed: "Service Worker registration failed.",
+    subscription_failed: "The device could not create a push subscription.",
+    backend_registration_failed: "The device subscription was not registered by the Backend.",
+    unknown: "Notification status could not be confirmed."
+  };
+
+  notificationStatusTextEl.textContent = messages[status] || messages.unknown;
+  testNotificationBtn.disabled = status !== "enabled";
+  enableNotificationsBtn.textContent =
+    status === "enabled" ? "Re-register" : "Enable Notifications";
+}
+
+async function enablePatrolNotifications(){
+  enableNotificationsBtn.disabled = true;
+  notificationStatusTextEl.textContent = "Registering this device…";
+
+  try{
+    const result = await initializePushNotifications(
+      guardSession,
+      { requestPermission:true }
+    );
+
+    renderNotificationStatus(result);
+  }catch(err){
+    console.error("Notification registration failed:",err);
+    renderNotificationStatus({status:"subscription_failed"});
+  }finally{
+    enableNotificationsBtn.disabled = false;
+  }
+}
+
+async function sendTestNotification(){
+  testNotificationBtn.disabled = true;
+  notificationStatusTextEl.textContent = "Sending test notification…";
+
+  try{
+    const response = await fetch(`${API_BASE_URL}/push/test`,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        Authorization:`Bearer ${localStorage.getItem("guard_session_token") || ""}`
+      },
+      body:JSON.stringify({})
+    });
+
+    const data = await response.json();
+    const delivered = response.ok && (data.result?.sent_count || 0) > 0;
+
+    notificationStatusTextEl.textContent = delivered
+      ? "Test submitted. Check this device now."
+      : "Test failed: no active subscription for this session.";
+  }catch(err){
+    console.error("Test notification failed:",err);
+    notificationStatusTextEl.textContent = "Test notification request failed.";
+  }finally{
+    testNotificationBtn.disabled = false;
+  }
 }
 
 function getTemporaryAccessExpiry(){
@@ -612,6 +745,11 @@ function applyTemporaryAccessState(){
 
   readOnlyBannerEl?.classList.toggle(
     "visible",
+    readOnly
+  );
+
+  notificationPanelEl?.classList.toggle(
+    "hidden",
     readOnly
   );
 
@@ -1257,6 +1395,8 @@ missedToggle.addEventListener("click",()=>{
 manualRefreshBtn.addEventListener("click",loadPatrolBoard);
 startScanBtn.addEventListener("click",startScanner);
 stopBtn.addEventListener("click",stopScanner);
+enableNotificationsBtn.addEventListener("click",enablePatrolNotifications);
+testNotificationBtn.addEventListener("click",sendTestNotification);
 
 window.addEventListener(
   "pageshow",
@@ -1286,9 +1426,11 @@ async function initializePatrolModule(){
   }
 
   if(!isReadOnlySession()){
-    await initializePushNotifications(
+    const notificationResult = await initializePushNotifications(
       guardSession
     );
+
+    renderNotificationStatus(notificationResult);
   }
 
   await loadPatrolBoard();
