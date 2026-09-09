@@ -1039,7 +1039,7 @@ function stopTemporaryAccessExpiryTimer() {
   }
 }
 
-function expireTemporaryAccess() {
+function expireGuardSession(message) {
   stopTemporaryAccessExpiryTimer();
   clearGuardSessionStorage();
 
@@ -1050,9 +1050,14 @@ function expireTemporaryAccess() {
   showLoginScreen();
 
   if (loginError) {
-    loginError.textContent =
-      "Η προσωρινή πρόσβαση έχει λήξει.";
+    loginError.textContent = message;
   }
+}
+
+function expireTemporaryAccess() {
+  expireGuardSession(
+    "Η προσωρινή πρόσβαση έχει λήξει."
+  );
 }
 
 function applyTemporaryAccessState(
@@ -1304,6 +1309,21 @@ latestGuardLocation = {
 const data = await response.json();
 console.log("GPS RESPONSE", response.status, data);
 
+if (
+  response.status === 401 ||
+  response.status === 403
+) {
+  if (isReadOnlyGuardSession()) {
+    expireTemporaryAccess();
+  } else {
+    expireGuardSession(
+      "Η προηγούμενη βάρδια ολοκληρώθηκε. Συνδέσου ξανά για να αναλάβεις νέα βάρδια."
+    );
+  }
+
+  return;
+}
+
 if (!response.ok || data.status !== "ok") {
   console.error("GPS backend rejected:", data);
 
@@ -1396,13 +1416,25 @@ async function sendGuardHeartbeat() {
 );
 
 if (
-  isReadOnlyGuardSession() &&
-  (
-    response.status === 401 ||
-    response.status === 403
-  )
+  response.status === 401 ||
+  response.status === 403
 ) {
-  expireTemporaryAccess();
+  if (isReadOnlyGuardSession()) {
+    expireTemporaryAccess();
+  } else {
+    expireGuardSession(
+      "Η προηγούμενη βάρδια ολοκληρώθηκε. Συνδέσου ξανά για να αναλάβεις νέα βάρδια."
+    );
+  }
+
+  return;
+}
+
+if (!response.ok) {
+  console.error(
+    "Guard heartbeat rejected:",
+    response.status
+  );
 }
   } catch (err) {
     console.error("Guard heartbeat failed:", err);
