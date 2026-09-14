@@ -564,9 +564,10 @@ h1{
   <footer class="footer">© Noctua Core – Aegis Link Patrol Module</footer>
 </div>
 
+<script src="config.js"></script>
 <script type="module">
   import { initializePushNotifications } from "./push.js?v=20260909-1";
-const API_BASE_URL = "https://noctua-panic-backend-production.up.railway.app";
+const API_BASE_URL = window.AEGIS_CONFIG.backendBase;
 const SESSION_KEY = "aegis_guard_session";
 
 const guardNameEl = document.getElementById("guardName");
