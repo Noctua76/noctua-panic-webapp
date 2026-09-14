@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://noctua-panic-backend-production.up.railway.app";
+const API_BASE_URL = window.AEGIS_CONFIG.backendBase;
 
 let serviceWorkerRegistration = null;
 

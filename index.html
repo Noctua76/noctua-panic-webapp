@@ -151,6 +151,27 @@ body{
   font-size:14px;
 }
 
+.password-field-row{
+  position:relative;
+}
+
+.password-field-row input{
+  padding-right:72px;
+}
+
+.password-visibility-toggle{
+  position:absolute;
+  top:50%;
+  right:8px;
+  transform:translateY(-50%);
+  border:0;
+  background:transparent;
+  color:#b9c2d8;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
 .login-btn{
   margin-top:6px;
   width:100%;
@@ -746,7 +767,16 @@ body{
 
       <div class="login-field">
         <label for="guardPassword">Password</label>
-        <input id="guardPassword" type="password" autocomplete="current-password" placeholder="Password">
+        <div class="password-field-row">
+          <input id="guardPassword" type="password" autocomplete="current-password" placeholder="Password">
+          <button
+            id="guardPasswordToggle"
+            class="password-visibility-toggle"
+            type="button"
+            aria-label="Show password"
+            aria-pressed="false"
+          >Show</button>
+        </div>
       </div>
 
       <button id="guardLoginBtn" class="login-btn" type="button">
@@ -947,9 +977,10 @@ body{
     </div>
   </div>
 
+  <script src="config.js"></script>
   <script>
   // 🔹 Global βάση για όλα τα calls προς backend
-  const BACKEND_BASE = 'https://noctua-panic-backend-production.up.railway.app';
+  const BACKEND_BASE = window.AEGIS_CONFIG.backendBase;
   const SESSION_KEY = "aegis_guard_session";
   function getGuardAuthHeaders() {
   const token = localStorage.getItem("guard_session_token");
@@ -967,6 +998,7 @@ const mainApp = document.getElementById("mainApp");
 const guardLoginBtn = document.getElementById("guardLoginBtn");
 const guardUsername = document.getElementById("guardUsername");
 const guardPassword = document.getElementById("guardPassword");
+const guardPasswordToggle = document.getElementById("guardPasswordToggle");
 const loginError = document.getElementById("loginError");
 const guardNameEl = document.getElementById("guardName");
 const guardSiteEl = document.getElementById("guardSite");
@@ -1517,11 +1549,7 @@ RuntimeClient.report(BACKEND_BASE, {
   } catch (err) {
     console.error("Guard login failed:", err);
     if (loginError) {
-  loginError.textContent =
-    err.message ===
-    "Temporary access has expired"
-      ? "Η προσωρινή πρόσβαση έχει λήξει."
-      : "Λάθος στοιχεία ή πρόβλημα σύνδεσης.";
+      loginError.textContent = err.message || "Login failed.";
 }
   } finally {
     if (guardLoginBtn) guardLoginBtn.textContent = "Login";
@@ -1541,6 +1569,19 @@ if (guardPassword) {
     if (e.key === "Enter") {
       loginGuard();
     }
+  });
+}
+
+if (guardPassword && guardPasswordToggle) {
+  guardPasswordToggle.addEventListener("click", () => {
+    const showing = guardPassword.type === "text";
+    guardPassword.type = showing ? "password" : "text";
+    guardPasswordToggle.textContent = showing ? "Show" : "Hide";
+    guardPasswordToggle.setAttribute(
+      "aria-label",
+      showing ? "Show password" : "Hide password"
+    );
+    guardPasswordToggle.setAttribute("aria-pressed", String(!showing));
   });
 }
 
