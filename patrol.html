@@ -114,7 +114,7 @@ h1{
 
 .summary{
   display:grid;
-  grid-template-columns:repeat(4,1fr);
+  grid-template-columns:repeat(5,1fr);
   gap:8px;
 }
 
@@ -432,6 +432,10 @@ h1{
 }
 
 @media(max-width:640px){
+  .summary{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
   .notification-panel{
     align-items:stretch;
     flex-direction:column;
@@ -550,6 +554,14 @@ h1{
 
   <section class="section">
     <div class="section-head">
+      <span>Late Completed</span>
+      <button class="toggle" id="lateCompletedToggle" type="button">Show</button>
+    </div>
+    <div id="lateCompletedList" style="display:none"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
       <span>Missed</span>
       <button class="toggle" id="missedToggle" type="button">Show</button>
     </div>
@@ -579,10 +591,12 @@ const heroEl = document.getElementById("hero");
 const activeListEl = document.getElementById("activeList");
 const upcomingListEl = document.getElementById("upcomingList");
 const completedListEl = document.getElementById("completedList");
+const lateCompletedListEl = document.getElementById("lateCompletedList");
 const missedListEl = document.getElementById("missedList");
 const activeCountEl = document.getElementById("activeCount");
 const upcomingCountEl = document.getElementById("upcomingCount");
 const completedToggle = document.getElementById("completedToggle");
+const lateCompletedToggle = document.getElementById("lateCompletedToggle");
 const missedToggle = document.getElementById("missedToggle");
 const scanPanel = document.getElementById("scanPanel");
 const selectedTitle = document.getElementById("selectedTitle");
@@ -911,10 +925,11 @@ function getWindowText(patrol){
 function splitPatrols(){
   const active = patrols.filter(p => p.status === "due_soon" || p.status === "overdue");
   const upcoming = patrols.filter(p => p.status === "scheduled");
-  const completed = completedPatrols;
+  const completed = completedPatrols.filter(p => p.status !== "completed_late");
+  const lateCompleted = completedPatrols.filter(p => p.status === "completed_late");
   const missed = patrols.filter(p => p.status === "missed");
 
-  return { active, upcoming, completed, missed };
+  return { active, upcoming, completed, lateCompleted, missed };
 }
 
 function pickNextPatrol(groups){
@@ -926,6 +941,7 @@ function pickNextPatrol(groups){
 function renderSummary(groups){
   summaryEl.innerHTML = `
     <div class="summary-box"><strong>${groups.completed.length}</strong><span>Completed</span></div>
+    <div class="summary-box"><strong>${groups.lateCompleted.length}</strong><span>Late</span></div>
     <div class="summary-box"><strong>${groups.active.length}</strong><span>Active</span></div>
     <div class="summary-box"><strong>${groups.upcoming.length}</strong><span>Upcoming</span></div>
     <div class="summary-box"><strong>${groups.missed.length}</strong><span>Missed</span></div>
@@ -994,7 +1010,7 @@ function renderPatrolCard(patrol, allowScan = false){
       <div class="badge ${patrol.status}">${labelStatus(patrol.status)}</div>
     </div>
 
-    <div class="row"><span>Type</span><strong>${patrol.schedule_type === "manual" ? "Extra Patrol" : "Routine Patrol"}</strong></div>
+    <div class="row"><span>Type</span><strong>${({manual:"Manual",random:"Random",recurring:"Scheduled"})[patrol.schedule_type] || "Scheduled"}</strong></div>
     <div class="row"><span>Window</span><strong>${getWindowText(patrol)}</strong></div>
 
     ${canScan ? `<button class="btn btn-blue" type="button">Start Scan</button>` : ""}
@@ -1026,6 +1042,7 @@ function renderBoard(){
   activeCountEl.textContent = groups.active.length;
   upcomingCountEl.textContent = groups.upcoming.length;
   completedToggle.textContent = completedListEl.style.display === "none" ? `Show (${groups.completed.length})` : `Hide (${groups.completed.length})`;
+  lateCompletedToggle.textContent = lateCompletedListEl.style.display === "none" ? `Show (${groups.lateCompleted.length})` : `Hide (${groups.lateCompleted.length})`;
   missedToggle.textContent = missedListEl.style.display === "none" ? `Show (${groups.missed.length})` : `Hide (${groups.missed.length})`;
 
   renderSummary(groups);
@@ -1042,6 +1059,10 @@ function renderBoard(){
 
   renderList(completedListEl, groups.completed, {
     empty:"No completed patrols yet."
+  });
+
+  renderList(lateCompletedListEl, groups.lateCompleted, {
+    empty:"No late completed patrols yet."
   });
 
   renderList(missedListEl, groups.missed, {
@@ -1226,6 +1247,7 @@ async function submitScan(scannedQrToken){
 
   const payload = {
     schedule_id:selectedPatrol.schedule_id,
+    schedule_type:selectedPatrol.schedule_type,
     qr_token:scannedQrToken,
     latitude:location.latitude,
     longitude:location.longitude,
@@ -1383,6 +1405,13 @@ completedToggle.addEventListener("click",()=>{
   completedListEl.style.display = completedListEl.style.display === "none" ? "flex" : "none";
   completedListEl.style.flexDirection = "column";
   completedListEl.style.gap = "10px";
+  renderBoard();
+});
+
+lateCompletedToggle.addEventListener("click",()=>{
+  lateCompletedListEl.style.display = lateCompletedListEl.style.display === "none" ? "flex" : "none";
+  lateCompletedListEl.style.flexDirection = "column";
+  lateCompletedListEl.style.gap = "10px";
   renderBoard();
 });
 
