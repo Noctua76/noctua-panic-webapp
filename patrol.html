@@ -629,6 +629,7 @@ let html5QrCode = null;
 let isProcessing = false;
 let lastCompletedMessage = null;
 let temporaryAccessExpiryTimer = null;
+let scanWindowRefreshTimer = null;
 
 function isReadOnlySession(){
   return (
@@ -944,6 +945,27 @@ function getWindowText(patrol, now = new Date()){
   return "-";
 }
 
+function scheduleNextScanWindowRefresh(){
+  if(scanWindowRefreshTimer){
+    clearTimeout(scanWindowRefreshTimer);
+    scanWindowRefreshTimer = null;
+  }
+
+  const now = Date.now();
+  const nextScanOpening = patrols
+    .filter(patrol => patrol.status === "scheduled")
+    .map(patrol => getPatrolWallClockDate(patrol.scan_available_from)?.getTime())
+    .filter(timestamp => Number.isFinite(timestamp) && timestamp > now)
+    .sort((first, second) => first - second)[0];
+
+  if(!nextScanOpening) return;
+
+  scanWindowRefreshTimer = setTimeout(() => {
+    scanWindowRefreshTimer = null;
+    loadPatrolBoard();
+  }, Math.min(nextScanOpening - now + 250, 2147483647));
+}
+
 function splitPatrols(){
   const active = patrols.filter(p => p.status === "due_soon" || p.status === "overdue");
   const upcoming = patrols.filter(p => p.status === "scheduled");
@@ -1060,6 +1082,8 @@ function renderList(target, items, options = {}){
 
 function renderBoard(){
   const groups = splitPatrols();
+
+  scheduleNextScanWindowRefresh();
 
   activeCountEl.textContent = groups.active.length;
   upcomingCountEl.textContent = groups.upcoming.length;
