@@ -194,6 +194,26 @@ body{
   text-align:center;
 }
 
+.password-setup-copy{
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.5;
+  text-align:center;
+}
+
+.password-requirements{
+  margin:0;
+  padding-left:20px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+}
+
+.password-setup-success{
+  color:#8df0bd;
+}
+
 .guard-strip{
   margin-top:4px;
   border-radius:28px;
@@ -795,6 +815,41 @@ body{
 
   </section>
 
+  <section id="passwordSetupScreen" class="login-screen hidden">
+    <div class="login-card">
+      <div class="login-title">
+        <span>FIRST LOGIN</span>
+        <strong>Create your password</strong>
+        <p id="passwordSetupGuard" class="password-setup-copy">
+          Choose a permanent password before continuing.
+        </p>
+      </div>
+
+      <div class="login-field">
+        <label for="newGuardPassword">New password</label>
+        <div class="password-field-row">
+          <input id="newGuardPassword" type="password" autocomplete="new-password">
+          <button id="newGuardPasswordToggle" class="password-visibility-toggle" type="button">Show</button>
+        </div>
+      </div>
+      <div class="login-field">
+        <label for="confirmGuardPassword">Confirm new password</label>
+        <div class="password-field-row">
+          <input id="confirmGuardPassword" type="password" autocomplete="new-password">
+          <button id="confirmGuardPasswordToggle" class="password-visibility-toggle" type="button">Show</button>
+        </div>
+      </div>
+
+      <ul class="password-requirements">
+        <li>At least 12 characters</li>
+        <li>Uppercase, lowercase, number and symbol</li>
+        <li>Different from the temporary password</li>
+      </ul>
+      <button id="saveGuardPasswordBtn" class="login-btn" type="button">Create password</button>
+      <div id="passwordSetupError" class="login-error"></div>
+    </div>
+  </section>
+
   <div class="app hidden" id="mainApp">
     <!-- Header -->
     <header class="app-header">
@@ -1001,14 +1056,23 @@ body{
 }
 
 let currentGuardSession = null;
+let passwordSetupToken = null;
 
 const loginScreen = document.getElementById("loginScreen");
+const passwordSetupScreen = document.getElementById("passwordSetupScreen");
 const mainApp = document.getElementById("mainApp");
 const guardLoginBtn = document.getElementById("guardLoginBtn");
 const guardUsername = document.getElementById("guardUsername");
 const guardPassword = document.getElementById("guardPassword");
 const guardPasswordToggle = document.getElementById("guardPasswordToggle");
 const loginError = document.getElementById("loginError");
+const passwordSetupGuard = document.getElementById("passwordSetupGuard");
+const newGuardPassword = document.getElementById("newGuardPassword");
+const confirmGuardPassword = document.getElementById("confirmGuardPassword");
+const newGuardPasswordToggle = document.getElementById("newGuardPasswordToggle");
+const confirmGuardPasswordToggle = document.getElementById("confirmGuardPasswordToggle");
+const saveGuardPasswordBtn = document.getElementById("saveGuardPasswordBtn");
+const passwordSetupError = document.getElementById("passwordSetupError");
 const guardNameEl = document.getElementById("guardName");
 const guardSiteEl = document.getElementById("guardSite");
 const gpsStatusEl = document.getElementById("gpsStatus");
@@ -1186,6 +1250,7 @@ function showMainApp(sessionData) {
 }
 
   if (loginScreen) loginScreen.classList.add("hidden");
+  if (passwordSetupScreen) passwordSetupScreen.classList.add("hidden");
   if (mainApp) mainApp.classList.remove("hidden");
 
   if (guardNameEl) {
@@ -1218,7 +1283,23 @@ function showLoginScreen() {
   stopTemporaryAccessExpiryTimer();
 
   if (mainApp) mainApp.classList.add("hidden");
+  if (passwordSetupScreen) passwordSetupScreen.classList.add("hidden");
   if (loginScreen) loginScreen.classList.remove("hidden");
+}
+
+function showPasswordSetupScreen(data) {
+  passwordSetupToken = data.password_setup_token;
+  if (guardPassword) guardPassword.value = "";
+  if (loginScreen) loginScreen.classList.add("hidden");
+  if (mainApp) mainApp.classList.add("hidden");
+  if (passwordSetupScreen) passwordSetupScreen.classList.remove("hidden");
+  if (passwordSetupGuard) {
+    passwordSetupGuard.textContent = `${data.guard?.full_name || data.guard?.username || "Guard"}, create a permanent password. This setup expires in 15 minutes.`;
+  }
+  if (passwordSetupError) passwordSetupError.textContent = "";
+  if (newGuardPassword) newGuardPassword.value = "";
+  if (confirmGuardPassword) confirmGuardPassword.value = "";
+  newGuardPassword?.focus();
 }
 
 function enforceMainAppSession() {
@@ -1508,7 +1589,10 @@ async function loginGuard() {
     return;
   }
 
-  if (loginError) loginError.textContent = "";
+  if (loginError) {
+    loginError.classList.remove("password-setup-success");
+    loginError.textContent = "";
+  }
   if (guardLoginBtn) guardLoginBtn.textContent = "Logging in...";
 
   try {
@@ -1523,6 +1607,11 @@ async function loginGuard() {
     });
 
     const data = await response.json();
+
+    if (response.ok && data.code === "GUARD_PASSWORD_CHANGE_REQUIRED") {
+      showPasswordSetupScreen(data);
+      return;
+    }
 
     if (!response.ok || data.status !== "ok") {
       throw new Error(data.message || "Login failed");
@@ -1560,10 +1649,71 @@ RuntimeClient.report(BACKEND_BASE, {
     if (loginError) {
       loginError.textContent = err.message || "Login failed.";
 }
+
   } finally {
     if (guardLoginBtn) guardLoginBtn.textContent = "Login";
   }
 }
+
+async function saveGuardPassword() {
+  const newPassword = newGuardPassword?.value || "";
+  const confirmPassword = confirmGuardPassword?.value || "";
+  if (!passwordSetupToken) {
+    showLoginScreen();
+    if (loginError) loginError.textContent = "Password setup expired. Sign in again.";
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    passwordSetupError.textContent = "Passwords do not match.";
+    return;
+  }
+
+  passwordSetupError.textContent = "";
+  saveGuardPasswordBtn.disabled = true;
+  saveGuardPasswordBtn.textContent = "Saving...";
+  try {
+    const response = await fetch(`${BACKEND_BASE}/guard/change-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        password_setup_token: passwordSetupToken,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || "Unable to create password.");
+
+    passwordSetupToken = null;
+    newGuardPassword.value = "";
+    confirmGuardPassword.value = "";
+    guardPassword.value = "";
+    showLoginScreen();
+    loginError.classList.add("password-setup-success");
+    loginError.textContent = "Password created. Sign in with your new password.";
+  } catch (error) {
+    passwordSetupError.textContent = error.message;
+  } finally {
+    saveGuardPasswordBtn.disabled = false;
+    saveGuardPasswordBtn.textContent = "Create password";
+  }
+}
+
+function attachPasswordToggle(input, button) {
+  if (!input || !button) return;
+  button.addEventListener("click", () => {
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    button.textContent = showing ? "Show" : "Hide";
+  });
+}
+
+saveGuardPasswordBtn?.addEventListener("click", saveGuardPassword);
+confirmGuardPassword?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") saveGuardPassword();
+});
+attachPasswordToggle(newGuardPassword, newGuardPasswordToggle);
+attachPasswordToggle(confirmGuardPassword, confirmGuardPasswordToggle);
 
 if (guardLogoutBtn) {
   guardLogoutBtn.addEventListener("click", logoutGuard);
