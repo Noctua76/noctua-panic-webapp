@@ -1371,14 +1371,43 @@ let guardHeartbeatTimer = null;
 let guardLocationWatchId = null;
 let guardLocationKeepaliveTimer = null;
 let guardLocationRefreshPending = false;
+let guardLocationRefreshStartedAt = 0;
+let guardLocationRefreshRequestId = 0;
+let guardLocationWatchGeneration = 0;
+let guardLocationResumeTimer = null;
 let latestGuardLocation = null;
 const GUARD_LOCATION_KEEPALIVE_INTERVAL_MS = 60000;
+const GUARD_LOCATION_REFRESH_STALE_MS = 30000;
+const GUARD_LOCATION_RESUME_DEBOUNCE_MS = 1500;
+
+function hasActiveStandardGuardSession() {
+  return Boolean(
+    currentGuardSession?.guard?.id
+    && currentGuardSession?.session?.id
+    && !isReadOnlyGuardSession()
+  );
+}
+
+function setGuardGpsStatus(message) {
+  if (gpsStatusEl) {
+    gpsStatusEl.textContent = message;
+  }
+}
+
+function guardLocationErrorStatus(err) {
+  if (err?.code === 1) return "Permission denied";
+  if (err?.code === 2) return "Position unavailable";
+  if (err?.code === 3) return "Timed out";
+  return "Position unavailable";
+}
+
+function clearGuardLocationPendingState() {
+  guardLocationRefreshPending = false;
+  guardLocationRefreshStartedAt = 0;
+}
 
 async function sendGuardLocation(position) {
-  if (
-  !currentGuardSession?.guard?.id ||
-  isReadOnlyGuardSession()
-) {
+  if (!hasActiveStandardGuardSession()) {
   return;
 }
 
@@ -1470,40 +1499,38 @@ if (gpsStatusEl) {
   }
 }
 
-function startGuardLocationTracking() {
-  stopGuardLocationTracking();
-
-  if (isReadOnlyGuardSession()) {
-  if (gpsStatusEl) {
-    gpsStatusEl.textContent =
-      "Disabled · Read only";
-  }
-
-  return;
-}
-
-  if (!navigator.geolocation) {
-    console.warn("Geolocation is not supported on this device.");
+function refreshGuardLocationNow() {
+  if (!hasActiveStandardGuardSession() || !navigator.geolocation) {
     return;
   }
 
-  const refreshGuardLocation = () => {
-    if (
-      guardLocationRefreshPending ||
-      !currentGuardSession?.guard?.id ||
-      isReadOnlyGuardSession()
-    ) {
-      return;
-    }
+  const now = Date.now();
+  const pendingIsFresh = guardLocationRefreshPending
+    && now - guardLocationRefreshStartedAt < GUARD_LOCATION_REFRESH_STALE_MS;
 
-    guardLocationRefreshPending = true;
-    navigator.geolocation.getCurrentPosition(
+  if (pendingIsFresh) {
+    return;
+  }
+
+  const requestId = ++guardLocationRefreshRequestId;
+  guardLocationRefreshPending = true;
+  guardLocationRefreshStartedAt = now;
+  setGuardGpsStatus("Acquiring...");
+
+  navigator.geolocation.getCurrentPosition(
     (position) => {
-      guardLocationRefreshPending = false;
+      if (requestId !== guardLocationRefreshRequestId) {
+        return;
+      }
+
+      clearGuardLocationPendingState();
       sendGuardLocation(position);
     },
     (err) => {
-      guardLocationRefreshPending = false;
+      if (requestId === guardLocationRefreshRequestId) {
+        clearGuardLocationPendingState();
+        setGuardGpsStatus(guardLocationErrorStatus(err));
+      }
       console.error("Immediate guard location error:", {
         code: err.code,
         message: err.message
@@ -1515,13 +1542,29 @@ function startGuardLocationTracking() {
       timeout: 20000
     }
   );
-  };
+}
 
-  refreshGuardLocation();
+function restartGuardLocationWatcher() {
+  if (!hasActiveStandardGuardSession() || !navigator.geolocation) {
+    return;
+  }
 
+  if (guardLocationWatchId !== null) {
+    navigator.geolocation.clearWatch(guardLocationWatchId);
+  }
+
+  const watchGeneration = ++guardLocationWatchGeneration;
   guardLocationWatchId = navigator.geolocation.watchPosition(
-    sendGuardLocation,
+    (position) => {
+      if (watchGeneration === guardLocationWatchGeneration) {
+        sendGuardLocation(position);
+      }
+    },
     (err) => {
+      if (watchGeneration !== guardLocationWatchGeneration) {
+        return;
+      }
+      setGuardGpsStatus(guardLocationErrorStatus(err));
       console.error("Guard location permission/error:", {
         code: err.code,
         message: err.message
@@ -1533,11 +1576,70 @@ function startGuardLocationTracking() {
       timeout: 20000
     }
   );
+}
+
+function restartGuardLocationKeepalive() {
+  if (guardLocationKeepaliveTimer !== null) {
+    clearInterval(guardLocationKeepaliveTimer);
+  }
 
   guardLocationKeepaliveTimer = setInterval(
-    refreshGuardLocation,
+    refreshGuardLocationNow,
     GUARD_LOCATION_KEEPALIVE_INTERVAL_MS
   );
+}
+
+function performGuardLocationResume() {
+  guardLocationResumeTimer = null;
+
+  if (!hasActiveStandardGuardSession()) {
+    return;
+  }
+
+  if (
+    guardLocationRefreshPending
+    && Date.now() - guardLocationRefreshStartedAt >= GUARD_LOCATION_REFRESH_STALE_MS
+  ) {
+    clearGuardLocationPendingState();
+  }
+
+  restartGuardLocationWatcher();
+  restartGuardLocationKeepalive();
+  refreshGuardLocationNow();
+}
+
+function resumeGuardLocationTracking() {
+  if (!hasActiveStandardGuardSession()) {
+    return;
+  }
+
+  if (guardLocationResumeTimer !== null) {
+    return;
+  }
+
+  guardLocationResumeTimer = setTimeout(
+    performGuardLocationResume,
+    GUARD_LOCATION_RESUME_DEBOUNCE_MS
+  );
+}
+
+function startGuardLocationTracking() {
+  stopGuardLocationTracking();
+
+  if (isReadOnlyGuardSession()) {
+    setGuardGpsStatus("Disabled · Read only");
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    setGuardGpsStatus("Position unavailable");
+    console.warn("Geolocation is not supported on this device.");
+    return;
+  }
+
+  restartGuardLocationWatcher();
+  restartGuardLocationKeepalive();
+  refreshGuardLocationNow();
 }
 
 function stopGuardLocationTracking() {
@@ -1551,7 +1653,14 @@ function stopGuardLocationTracking() {
     guardLocationKeepaliveTimer = null;
   }
 
-  guardLocationRefreshPending = false;
+  if (guardLocationResumeTimer !== null) {
+    clearTimeout(guardLocationResumeTimer);
+    guardLocationResumeTimer = null;
+  }
+
+  guardLocationRefreshRequestId += 1;
+  guardLocationWatchGeneration += 1;
+  clearGuardLocationPendingState();
 }
 
 async function sendGuardHeartbeat() {
@@ -2186,6 +2295,7 @@ function reconnectWhenAppReturns() {
   if (document.visibilityState === "visible") {
     checkSystemStatus();
     sendGuardHeartbeat();
+    resumeGuardLocationTracking();
   }
 }
 
@@ -2194,6 +2304,7 @@ document.addEventListener("visibilitychange", reconnectWhenAppReturns);
 window.addEventListener("focus", () => {
   checkSystemStatus();
   sendGuardHeartbeat();
+  resumeGuardLocationTracking();
 });
 
 window.addEventListener("pageshow", () => {
@@ -2202,12 +2313,14 @@ window.addEventListener("pageshow", () => {
 
   if (currentGuardSession?.guard && currentGuardSession?.session) {
     sendGuardHeartbeat();
+    resumeGuardLocationTracking();
   }
 });
 
 window.addEventListener("online", () => {
   checkSystemStatus();
   sendGuardHeartbeat();
+  resumeGuardLocationTracking();
 });
 
   /* ==========================================
