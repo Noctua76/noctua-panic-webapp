@@ -1369,7 +1369,10 @@ window.history.replaceState(null, "", "index.html");
 
 let guardHeartbeatTimer = null;
 let guardLocationWatchId = null;
+let guardLocationKeepaliveTimer = null;
+let guardLocationRefreshPending = false;
 let latestGuardLocation = null;
+const GUARD_LOCATION_KEEPALIVE_INTERVAL_MS = 60000;
 
 async function sendGuardLocation(position) {
   if (
@@ -1484,9 +1487,23 @@ function startGuardLocationTracking() {
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    sendGuardLocation,
+  const refreshGuardLocation = () => {
+    if (
+      guardLocationRefreshPending ||
+      !currentGuardSession?.guard?.id ||
+      isReadOnlyGuardSession()
+    ) {
+      return;
+    }
+
+    guardLocationRefreshPending = true;
+    navigator.geolocation.getCurrentPosition(
+    (position) => {
+      guardLocationRefreshPending = false;
+      sendGuardLocation(position);
+    },
     (err) => {
+      guardLocationRefreshPending = false;
       console.error("Immediate guard location error:", {
         code: err.code,
         message: err.message
@@ -1498,6 +1515,9 @@ function startGuardLocationTracking() {
       timeout: 20000
     }
   );
+  };
+
+  refreshGuardLocation();
 
   guardLocationWatchId = navigator.geolocation.watchPosition(
     sendGuardLocation,
@@ -1513,6 +1533,11 @@ function startGuardLocationTracking() {
       timeout: 20000
     }
   );
+
+  guardLocationKeepaliveTimer = setInterval(
+    refreshGuardLocation,
+    GUARD_LOCATION_KEEPALIVE_INTERVAL_MS
+  );
 }
 
 function stopGuardLocationTracking() {
@@ -1520,6 +1545,13 @@ function stopGuardLocationTracking() {
     navigator.geolocation.clearWatch(guardLocationWatchId);
     guardLocationWatchId = null;
   }
+
+  if (guardLocationKeepaliveTimer !== null) {
+    clearInterval(guardLocationKeepaliveTimer);
+    guardLocationKeepaliveTimer = null;
+  }
+
+  guardLocationRefreshPending = false;
 }
 
 async function sendGuardHeartbeat() {
