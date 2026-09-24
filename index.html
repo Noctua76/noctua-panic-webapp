@@ -1238,6 +1238,12 @@ function loadSavedGuardSession() {
   }
 }
 
+function formatGuardSiteLabel(guard) {
+  const code = guard?.site_code;
+  const location = guard?.site_location;
+  return code ? `${code}${location ? ` · ${location}` : ""}` : "-";
+}
+
 function showMainApp(sessionData) {
   currentGuardSession = sessionData;
 
@@ -1258,7 +1264,7 @@ function showMainApp(sessionData) {
   }
 
   if (guardSiteEl) {
-    guardSiteEl.textContent = sessionData.guard?.site_id || "-";
+    guardSiteEl.textContent = formatGuardSiteLabel(sessionData.guard);
   }
   startGuardHeartbeat();
 
