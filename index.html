@@ -771,6 +771,8 @@ body{
     }
   </style>
   <link rel="stylesheet" href="pwa/installation-manager.css">
+  <link rel="stylesheet" href="demo-guidance.css">
+  <script src="demo-guidance.js"></script>
 </head>
 <body>
 
@@ -1201,6 +1203,15 @@ function applyTemporaryAccessState(
           )}.`
         : "";
   }
+
+  window.AegisDemoGuidance?.mount({
+    preview: readOnly,
+    guideId: "guardHome",
+    surface: "guard",
+    sessionIdentity:
+      sessionData?.guard?.access_expires_at ||
+      "active",
+  });
 
   stopTemporaryAccessExpiryTimer();
 

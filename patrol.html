@@ -447,6 +447,8 @@ h1{
 }
 </style>
 
+<link rel="stylesheet" href="demo-guidance.css">
+<script src="demo-guidance.js"></script>
 <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
 
@@ -1500,6 +1502,13 @@ async function initializePatrolModule(){
   if(!enforceSession()){
     return;
   }
+
+  window.AegisDemoGuidance?.mount({
+    preview:isReadOnlySession(),
+    guideId:"patrolBoard",
+    surface:"guard",
+    sessionIdentity:guardSession?.guard?.access_expires_at||"active"
+  });
 
   if(!isReadOnlySession()){
     const notificationResult = await initializePushNotifications(
