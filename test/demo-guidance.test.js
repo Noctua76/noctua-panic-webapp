@@ -80,3 +80,24 @@ test("the guidance remains presentation-only and existing read-only gates remain
   assert.match(pages["patrol.html"], /scanPanel\.style\.display =\s*readOnly \? "none" : ""/);
   assert.match(pages["reports.html"], /if\(readOnly\)return/);
 });
+
+test("Greek desktop headings are deterministic and preserve original mobile/English text", () => {
+  assert.equal(guidance.desktopDemoHeading(undefined, "gr"), undefined);
+  const examples = [
+    ["Τι βλέπετε", "ΤΙ ΒΛΕΠΕΤΕ"],
+    ["Πώς λειτουργεί", "ΠΩΣ ΛΕΙΤΟΥΡΓΕΙ"],
+    ["Επιχειρησιακή αξία", "ΕΠΙΧΕΙΡΗΣΙΑΚΗ ΑΞΙΑ"],
+    ["Λειτουργία επίδειξης", "ΛΕΙΤΟΥΡΓΙΑ ΕΠΙΔΕΙΞΗΣ"],
+  ];
+  for (const [original, expected] of examples) {
+    assert.equal(guidance.desktopDemoHeading(original, "gr"), expected);
+    assert.equal(guidance.desktopDemoHeading(original.normalize("NFD"), "gr"), expected);
+    assert.equal(guidance.desktopDemoHeading(original, "en"), original);
+  }
+  assert.equal(guidance.desktopDemoHeading("What you're seeing", "en"), "What you're seeing");
+  assert.equal(guidance.desktopDemoHeading("How it works", "en"), "How it works");
+  assert.equal(guidance.desktopDemoHeading("Operational value", "en"), "Operational value");
+  assert.match(css, /@media \(min-width: 769px\)\s*\{\s*\.demo-heading-mobile \{ display: none; \}/);
+  assert.match(css, /\.demo-heading-desktop \{ display: none; \}/);
+  assert.match(css, /\.demo-heading-desktop \{ display: inline; text-transform: none; \}/);
+});
