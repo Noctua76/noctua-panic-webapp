@@ -143,9 +143,26 @@
     return group;
   }
 
-  function appendList(container, title, items) {
+  // Presentation only: retain the original Greek heading on mobile.
+  function desktopDemoHeading(title, language) {
+    return language === "gr" && typeof title === "string"
+      ? title.normalize("NFD").replace(/\u0301/g, "").toUpperCase().normalize("NFC")
+      : title;
+  }
+
+  function guideHeading(title, language) {
+    const heading = element("h3");
+    if (language === "gr") {
+      heading.append(element("span", "demo-heading-mobile", title), element("span", "demo-heading-desktop", desktopDemoHeading(title, language)));
+    } else {
+      heading.textContent = title;
+    }
+    return heading;
+  }
+
+  function appendList(container, title, items, language) {
     const section = element("section");
-    section.append(element("h3", "", title));
+    section.append(guideHeading(title, language));
     const list = element("ul");
     items.forEach((item) => list.append(element("li", "", item)));
     section.append(list);
@@ -204,11 +221,11 @@
       scroll.append(element("p", "demo-guidance-eyebrow", "AEGIS LINK · DEMO GUIDE"));
       const title = element("h2", "", guide.title[language]); title.id = "guard-demo-guide-title"; scroll.append(title);
       scroll.append(element("p", "demo-guidance-intro", guide.intro[language]));
-      appendList(scroll, ui[language].seeing, guide.seeing[language]);
-      appendList(scroll, ui[language].works, guide.howItWorks[language]);
-      appendList(scroll, ui[language].value, guide.value[language]);
+      appendList(scroll, ui[language].seeing, guide.seeing[language], language);
+      appendList(scroll, ui[language].works, guide.howItWorks[language], language);
+      appendList(scroll, ui[language].value, guide.value[language], language);
       const limitations = element("section", "demo-guidance-limitations");
-      limitations.append(element("h3", "", guide.demoLimitations[language].title), element("p", "", guide.demoLimitations[language].body));
+      limitations.append(guideHeading(guide.demoLimitations[language].title, language), element("p", "", guide.demoLimitations[language].body));
       scroll.append(limitations);
       dialog.append(scroll);
     };
@@ -235,7 +252,7 @@
     };
   }
 
-  const api = { guides, isPreviewSession, mount, resolveLanguage };
+  const api = { desktopDemoHeading, guides, isPreviewSession, mount, resolveLanguage };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   global.AegisDemoGuidance = api;
 })(typeof window !== "undefined" ? window : globalThis);
