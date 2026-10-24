@@ -81,8 +81,8 @@ test("the guidance remains presentation-only and existing read-only gates remain
   assert.match(pages["reports.html"], /if\(readOnly\)return/);
 });
 
-test("Greek desktop headings are deterministic and preserve original mobile/English text", () => {
-  assert.equal(guidance.desktopDemoHeading(undefined, "gr"), undefined);
+test("Greek section headings are deterministic across viewports and preserve English text", () => {
+  assert.equal(guidance.displayDemoHeading(undefined, "gr"), undefined);
   const examples = [
     ["Τι βλέπετε", "ΤΙ ΒΛΕΠΕΤΕ"],
     ["Πώς λειτουργεί", "ΠΩΣ ΛΕΙΤΟΥΡΓΕΙ"],
@@ -90,14 +90,16 @@ test("Greek desktop headings are deterministic and preserve original mobile/Engl
     ["Λειτουργία επίδειξης", "ΛΕΙΤΟΥΡΓΙΑ ΕΠΙΔΕΙΞΗΣ"],
   ];
   for (const [original, expected] of examples) {
-    assert.equal(guidance.desktopDemoHeading(original, "gr"), expected);
-    assert.equal(guidance.desktopDemoHeading(original.normalize("NFD"), "gr"), expected);
-    assert.equal(guidance.desktopDemoHeading(original, "en"), original);
+    assert.equal(guidance.displayDemoHeading(original, "gr"), expected);
+    assert.equal(guidance.displayDemoHeading(original.normalize("NFD"), "gr"), expected);
+    assert.equal(guidance.displayDemoHeading(original, "en"), original);
   }
-  assert.equal(guidance.desktopDemoHeading("What you're seeing", "en"), "What you're seeing");
-  assert.equal(guidance.desktopDemoHeading("How it works", "en"), "How it works");
-  assert.equal(guidance.desktopDemoHeading("Operational value", "en"), "Operational value");
-  assert.match(css, /@media \(min-width: 769px\)\s*\{\s*\.demo-heading-mobile \{ display: none; \}/);
-  assert.match(css, /\.demo-heading-desktop \{ display: none; \}/);
-  assert.match(css, /\.demo-heading-desktop \{ display: inline; text-transform: none; \}/);
+  assert.equal(guidance.displayDemoHeading("What you're seeing", "en"), "What you're seeing");
+  assert.equal(guidance.displayDemoHeading("How it works", "en"), "How it works");
+  assert.equal(guidance.displayDemoHeading("Operational value", "en"), "Operational value");
+  assert.match(source, /heading\.textContent = displayDemoHeading\(title, language\)/);
+  assert.doesNotMatch(source, /demo-heading-(desktop|mobile)/);
+  assert.doesNotMatch(css, /demo-heading-(desktop|mobile)/);
+  assert.match(source, /element\("h2", "", guide\.title\[language\]\)/);
+  assert.match(source, /element\("p", "demo-guidance-intro", guide\.intro\[language\]\)/);
 });

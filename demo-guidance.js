@@ -144,7 +144,8 @@
   }
 
   // Presentation only: retain the original Greek heading on mobile.
-  function desktopDemoHeading(title, language) {
+  // Presentation-only normalization for Demo Guidance section headings.
+  function displayDemoHeading(title, language) {
     return language === "gr" && typeof title === "string"
       ? title.normalize("NFD").replace(/\u0301/g, "").toUpperCase().normalize("NFC")
       : title;
@@ -152,11 +153,7 @@
 
   function guideHeading(title, language) {
     const heading = element("h3");
-    if (language === "gr") {
-      heading.append(element("span", "demo-heading-mobile", title), element("span", "demo-heading-desktop", desktopDemoHeading(title, language)));
-    } else {
-      heading.textContent = title;
-    }
+    heading.textContent = displayDemoHeading(title, language);
     return heading;
   }
 
@@ -252,7 +249,7 @@
     };
   }
 
-  const api = { desktopDemoHeading, guides, isPreviewSession, mount, resolveLanguage };
+  const api = { displayDemoHeading, guides, isPreviewSession, mount, resolveLanguage };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   global.AegisDemoGuidance = api;
 })(typeof window !== "undefined" ? window : globalThis);
