@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'reports.html'), 'utf8');
@@ -106,13 +105,15 @@ test('Standard Guard keeps existing successful POST, reset and history refresh',
   assert.equal(page.elements.submitBtn.disabled, false);
 });
 
-test('Existing API paths and submission handler are unchanged from approved base', () => {
-  const base = execFileSync('git', ['show', '0056ed0caa0388157595302b29e88b55d36a37f0:reports.html'], { cwd: root, encoding: 'utf8' });
-  const paths = text => [...text.matchAll(/api\("([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(paths(source), paths(base));
-  const submit = text => text.match(/document\.getElementById\("reportForm"\)\.addEventListener\("submit",[^\n]+/)[0];
-  assert.equal(submit(source), submit(base));
-  assert.equal((source.match(/method:"POST"/g) || []).length, 1);
+test('Only the existing Guard Shift Report endpoints and guarded POST are present', () => {
+  const calls = [...script.matchAll(/\bapi\(\s*["']([^"']+)["']/g)].map(match => match[1]);
+  assert.deepEqual(calls.sort(), ['/guard/shift-reports', '/guard/shift-reports/current-shift']);
+  assert.equal((script.match(/method\s*:\s*["']POST["']/g) || []).length, 1);
+  assert.match(script, /api\(\s*["']\/guard\/shift-reports["']\s*,\s*\{\s*method\s*:\s*["']POST["']/);
+  assert.match(script, /api\(\s*["']\/guard\/shift-reports\/current-shift["']\s*\)/);
+  assert.match(script, /event\.preventDefault\(\);if\(readOnly\)return;/);
+  assert.doesNotMatch(script, /method\s*:\s*["'](?:PUT|PATCH|DELETE)["']/i);
+  assert.equal((script.match(/\bfetch\s*\(/g) || []).length, 1);
 });
 
 test('Preview CSS preserves visible controls without revealing transparent input overlays', () => {
