@@ -9,6 +9,9 @@ function slice(start, end) {
   assert.ok(a >= 0 && b > a);
   return source.slice(a, b);
 }
+const stateSource = slice('  // Questionnaire state must exist', 'let passwordSetupToken');
+const sessionUISource = slice('function showMainApp(', 'let guardHeartbeatTimer');
+const expirySource = slice('function expireGuardSession(', 'function expireTemporaryAccess');
 const flowSource = slice('  const INCIDENT_DRAFT_PREFIX =', '  function renderPendingAlertNotifications');
 const alertSource = slice('  async function triggerAlert()', '  // ===== Incident log');
 const sendSource = slice('  async function sendIncidentToBackend(', '  // ===== LIVE CLOCK');
@@ -16,24 +19,35 @@ const questionsSource = slice('  const incidentQuestions =', '  </script>');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
 function setup({ ai = 'ok', submission = 'ok', preview = false, panicFails = false, storage = new Map(), now = 1795500100000 } = {}) {
-  const elements = Object.fromEntries(['incident-assistant','assistant-question','assistant-progress','assistant-answer','assistant-next-btn'].map(id => {
+  const elements = Object.fromEntries(['incident-assistant','assistant-question','assistant-progress','assistant-answer','assistant-next-btn','mainApp','loginScreen','passwordSetupScreen','guardName','guardSite','gpsStatus','guardPassword','passwordSetupGuard','passwordSetupError','newGuardPassword','confirmGuardPassword'].map(id => {
     const classes = new Set(['hidden']);
     return [id, { value: '', textContent: '', disabled: false, classList: { add: x => classes.add(x), remove: x => classes.delete(x), contains: x => classes.has(x) }, addEventListener: (event, fn) => { elements[id][event] = fn; } }];
   }));
-  const calls = [], timers = [], alerts = [], pending = [];
+  const calls = [], timers = [], alerts = [], pending = [], microtasks = [];
+  const renders = [], windowListeners = {};
   let clock = now, nextIncident = 40;
   class ClockDate extends Date { static now() { return clock; } }
   const localStorage = { get length() { return storage.size; }, key: index => [...storage.keys()][index], getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
   let resets = 0;
   const context = vm.createContext({
     document: { getElementById: id => elements[id] }, Date: ClockDate, localStorage,
-    BACKEND_BASE: 'https://backend.test',
+    BACKEND_BASE: 'https://backend.test', SESSION_KEY: 'aegis_guard_session',
     currentGuardSession: { guard: { id: 1 }, session: { id: 253 } },
     latestGuardLocation: { latitude: 38, longitude: 23, accuracy: 10, battery: 90, timestamp: 'now' },
-    isReadOnlyGuardSession: () => preview,
+    isReadOnlyGuardSession: session => preview || (session ?? context.currentGuardSession)?.guard?.access_mode === 'read_only',
+    loginScreen: elements.loginScreen, passwordSetupScreen: elements.passwordSetupScreen, mainApp: elements.mainApp,
+    guardNameEl: elements.guardName, guardSiteEl: elements.guardSite, gpsStatusEl: elements.gpsStatus,
+    guardPassword: elements.guardPassword, passwordSetupGuard: elements.passwordSetupGuard,
+    passwordSetupError: elements.passwordSetupError, newGuardPassword: elements.newGuardPassword,
+    confirmGuardPassword: elements.confirmGuardPassword, loginError: { textContent: '' },
+    applyTemporaryAccessState: () => true, formatGuardSiteLabel: () => '-',
+    startGuardHeartbeat() {}, stopGuardHeartbeat() {}, startGuardLocationTracking() {}, stopGuardLocationTracking() {},
+    stopTemporaryAccessExpiryTimer() {}, clearGuardSessionStorage() {},
+    window: { history: { replaceState() {} }, addEventListener: (name, fn) => { windowListeners[name] = fn; } },
+    queueMicrotask: fn => microtasks.push(fn),
     getGuardAuthHeaders: () => ({ Authorization: 'Bearer test-token', 'Content-Type': 'application/json' }),
     statusCard: null, statusBadge: { textContent: '' }, startTimestamp: null,
-    startActiveTimer() {}, renderPendingAlertNotifications() {}, renderAlertNotifications() {}, renderAlertFailure() {},
+    startActiveTimer() {}, renderPendingAlertNotifications() {}, renderAlertNotifications() { renders.push('success'); }, renderAlertFailure() { renders.push('failure'); },
     resetWebAppUI() { resets++; },
     setTimeout: (fn, delay) => { timers.push({ fn, delay, dueAt: clock + delay }); },
     alert: text => alerts.push(text), console: { log() {}, error() {} },
@@ -52,8 +66,13 @@ function setup({ ai = 'ok', submission = 'ok', preview = false, panicFails = fal
           : { status: 'ok', incidentId: body.incidentId, responsesSaved: true, responseCount: 3 } };
     },
   });
-  vm.runInContext(flowSource + alertSource + sendSource + questionsSource, context);
-  return { elements, calls, timers, alerts, context, storage, pending, now: () => clock, setSubmission: mode => { submission = mode; },
+  vm.runInContext(stateSource + sessionUISource + expirySource + 'showMainApp(currentGuardSession);' + flowSource + alertSource + sendSource + questionsSource, context);
+  return { elements, calls, timers, alerts, context, storage, pending, renders,
+    storageEvent: key => windowListeners.storage({ key, storageArea: localStorage }),
+    show: session => { context.nextSession = session; vm.runInContext('showMainApp(nextSession)', context); },
+    logout: () => vm.runInContext('logoutGuard()', context),
+    expire: () => vm.runInContext('expireGuardSession("expired")', context),
+    flushRestore: () => { while (microtasks.length) microtasks.shift()(); }, now: () => clock, setSubmission: mode => { submission = mode; },
     timer: index => { clock = Math.max(clock, timers[index].dueAt); timers[index].fn(); },
     restore: () => vm.runInContext('restoreIncidentQuestionnaires()', context),
     enter: (text, advance = true) => { elements['assistant-answer'].value = text; elements['assistant-answer'].input({ target: elements['assistant-answer'] }); if (advance) elements['assistant-next-btn'].click(); },
@@ -261,7 +280,8 @@ test('session change while panic request is pending cannot rebind its questionna
   const activation = h.panic();
   h.context.currentGuardSession = { guard: { id: 2 }, session: { id: 254 } };
   finishPanic({ ok: true, json: async () => ({ incident: { id: '40' }, dispatch: {} }) });
-  await activation; h.start();
+  await activation;
+  assert.equal(h.timers.length, 0, "old activation must not schedule a current-view timer");
   const draft = JSON.parse([...h.storage.values()][0]);
   assert.equal(draft.sessionId, 253);
   assert.equal(draft.guardId, 1);
@@ -279,4 +299,170 @@ test('unavailable local storage does not block panic or in-memory completion', a
   h.start(); await h.answerAll();
   assert.equal(h.alerts.length, 1);
   assert.equal(h.resets(), 1);
+});
+
+function assertQuestionnaireCleared(h) {
+  assert.equal(h.elements['incident-assistant'].classList.contains('hidden'), true);
+  assert.equal(h.elements['assistant-answer'].value, '');
+  assert.equal(h.elements['assistant-question'].textContent, '');
+  assert.equal(h.elements['assistant-progress'].textContent, '');
+  assert.equal(h.elements['assistant-answer'].disabled, true);
+  assert.equal(h.elements['assistant-next-btn'].disabled, true);
+  assert.equal(vm.runInContext('questionnaireFlow', h.context), null);
+  assert.equal(vm.runInContext('activeIncidentFlow', h.context), null);
+  assert.equal(vm.runInContext('Object.keys(incidentAnswers).length', h.context), 0);
+}
+function viewSnapshot(h) {
+  return JSON.stringify({ elements: Object.fromEntries(Object.entries(h.elements).map(([id, e]) => [id, {
+    value: e.value, text: e.textContent, disabled: e.disabled, hidden: e.classList.contains('hidden'),
+  }])), badge: h.context.statusBadge.textContent, resets: h.resets(), alerts: h.alerts, renders: h.renders });
+}
+
+for (const transition of ['logout', 'expiry', 'missing session restore', 'Preview', 'another guard', 'another session']) {
+  test(`${transition}: clear displayed answers but retain the unresolved original draft`, async () => {
+    const h = setup(); await h.panic(); h.start(); h.enter('Private incident'); h.enter('Private draft location', false);
+    const retained = [...h.storage.entries()];
+    if (transition === 'logout') await h.logout();
+    else if (transition === 'expiry') h.expire();
+    else if (transition === 'missing session restore') { h.context.currentGuardSession = null; h.restore(); }
+    else h.show(transition === 'Preview'
+      ? { guard: { id: 1, access_mode: 'read_only' }, session: { id: 253 } }
+      : { guard: { id: transition === 'another guard' ? 2 : 1 }, session: { id: transition === 'another guard' ? 253 : 254 } });
+    assertQuestionnaireCleared(h);
+    h.flushRestore(); assertQuestionnaireCleared(h);
+    h.elements['assistant-next-btn'].click();
+    assert.equal(h.calls.filter(call => call.body.incidentAnswers).length, 0);
+    assert.deepEqual([...h.storage.entries()], retained);
+    const flow = JSON.parse(retained[0][1]);
+    assert.equal(flow.guardId, 1); assert.equal(flow.sessionId, 253); assert.equal(flow.incidentId, 40);
+    const oldFlow = vm.runInContext('incidentFlowQueue[0]', h.context);
+    assert.equal(oldFlow.answers.incident_type, 'Private incident');
+    assert.equal(oldFlow.draft, 'Private draft location');
+  });
+}
+
+test('application exposure is synchronous and startup does not depend on late state initialization', async () => {
+  const h = setup(); await h.panic(); h.start(); h.enter('Private answer', false);
+  const original = h.elements.mainApp.classList.remove;
+  let exposed = false;
+  h.elements.mainApp.classList.remove = name => {
+    if (name === 'hidden') { assertQuestionnaireCleared(h); exposed = true; }
+    original(name);
+  };
+  h.show({ guard: { id: 2 }, session: { id: 254 } });
+  assert.equal(exposed, true);
+  // Every setup already called the actual showMainApp before the late flow/questions declarations.
+  assert.ok(source.indexOf('let incidentQuestionnaireSessionKey') < source.indexOf('const savedGuardSession ='));
+});
+
+test('read-only restore clears an already displayed questionnaire before its early return', async () => {
+  const h = setup(); await h.panic(); h.start(); h.enter('Secret', false);
+  h.context.currentGuardSession.guard.access_mode = 'read_only';
+  h.restore(); assertQuestionnaireCleared(h);
+  assert.equal(h.storage.size, 1);
+});
+
+test('old timer cannot reveal a new session questionnaire; only the new timer owns that view', async () => {
+  const h = setup(); await h.panic();
+  h.show({ guard: { id: 2 }, session: { id: 254 } }); await h.panic();
+  const before = viewSnapshot(h);
+  h.timer(0);
+  assert.equal(viewSnapshot(h), before);
+  assert.equal(vm.runInContext('questionnaireFlow', h.context), null);
+  h.timer(1);
+  assert.equal(vm.runInContext('questionnaireFlow.incidentId', h.context), 41);
+  assert.equal(vm.runInContext('questionnaireFlow.sessionId', h.context), 254);
+  assert.equal(h.elements['assistant-answer'].value, '');
+  assert.equal(h.storage.size, 2);
+});
+
+for (const outcome of ['receipt', 'failure']) {
+  test(`late ${outcome} and finally from an old submit cannot modify a new session's active questionnaire`, async () => {
+    const h = setup({ submission: 'deferred' }); await h.panic(); h.start(); await h.answerAll();
+    const originalDraft = [...h.storage.entries()][0];
+    h.show({ guard: { id: 2 }, session: { id: 254 } }); await h.panic(); h.timer(1);
+    h.enter('Second guard private draft', false);
+    const before = viewSnapshot(h);
+    if (outcome === 'receipt') h.pending[0].resolve({ ok: true, json: async () => ({ status: 'ok', incidentId: 40, responseCount: 3, responsesSaved: true }) });
+    else h.pending[0].reject(new Error('old request failed'));
+    await tick();
+    assert.equal(viewSnapshot(h), before);
+    assert.equal(h.storage.get(originalDraft[0]), originalDraft[1], 'stale view must leave the original draft available for a verified retry');
+    assert.equal(vm.runInContext('questionnaireFlow.sessionId', h.context), 254);
+  });
+}
+
+for (const outcome of ['receipt', 'failure']) {
+  test(`late ${outcome} after expiry/Preview cannot re-enable cleared controls or expose answers`, async () => {
+    const h = setup({ submission: 'deferred' }); await h.panic(); h.start(); await h.answerAll();
+    h.expire(); h.show({ guard: { id: 2, access_mode: 'read_only' }, session: { id: 254 } });
+    const before = viewSnapshot(h);
+    if (outcome === 'receipt') h.pending[0].resolve({ ok: true, json: async () => ({ status: 'ok', incidentId: 40, responseCount: 3, responsesSaved: true }) });
+    else h.pending[0].reject(new Error('failed'));
+    await tick(); assertQuestionnaireCleared(h); assert.equal(viewSnapshot(h), before);
+    assert.equal(h.storage.size, 1);
+  });
+}
+
+for (const outcome of ['receipt', 'failure']) {
+  test(`late panic ${outcome} cannot change another session's notification or questionnaire UI`, async () => {
+    const h = setup(); let resolve, reject;
+    h.context.fetch = () => new Promise((yes, no) => { resolve = yes; reject = no; });
+    const activation = h.panic();
+    h.show({ guard: { id: 2 }, session: { id: 254 } });
+    const before = viewSnapshot(h);
+    if (outcome === 'receipt') resolve({ ok: true, json: async () => ({ incident: { id: 40 }, dispatch: {} }) });
+    else reject(new Error('old panic failed'));
+    await activation; assert.equal(viewSnapshot(h), before);
+    assert.equal(h.timers.length, 0);
+    assert.equal(h.storage.size, outcome === 'receipt' ? 1 : 0);
+  });
+}
+
+test('same original session can recover and retry after a detached in-flight request', async () => {
+  const h = setup({ submission: 'deferred' }); await h.panic(); h.start(); await h.answerAll();
+  h.show({ guard: { id: 2 }, session: { id: 254 } });
+  h.show({ guard: { id: 1 }, session: { id: 253 } }); h.restore();
+  assert.equal(h.elements['assistant-next-btn'].disabled, false);
+  h.setSubmission('ok'); h.elements['assistant-next-btn'].click(); await tick();
+  assert.equal(h.storage.size, 0);
+  const before = viewSnapshot(h);
+  h.pending[0].reject(new Error('old receipt lost')); await tick();
+  assert.equal(viewSnapshot(h), before);
+  const attempts = h.calls.filter(call => call.body.incidentAnswers);
+  assert.equal(attempts.length, 2);
+  assert.deepEqual(attempts[1].body.incidentAnswers, attempts[0].body.incidentAnswers);
+  assert.equal(attempts[1].body.sessionId, 253);
+});
+
+test('draft retention is origin-local plaintext, never automatically purged or reassigned on logout', async () => {
+  const h = setup(); await h.panic(); h.start(); h.enter('Sensitive operational answer', false);
+  const [key, serialized] = [...h.storage.entries()][0];
+  assert.equal(key, 'aegis-incident-questionnaire-v2:253:40');
+  assert.match(serialized, /Sensitive operational answer/);
+  assert.doesNotMatch(serialized, /test-token|Authorization|guard_session_token/);
+  await h.logout(); assert.equal(h.storage.get(key), serialized);
+  h.show({ guard: { id: 2 }, session: { id: 254 } }); h.restore();
+  assertQuestionnaireCleared(h); assert.equal(h.storage.get(key), serialized);
+  assert.equal(h.calls.filter(call => call.body.incidentAnswers).length, 0);
+});
+
+for (const key of ['aegis_guard_session', 'guard_session_token', null]) {
+  test(`cross-tab auth storage change (${key}) clears and suspends only questionnaire UI without purging drafts`, async () => {
+    const h = setup(); await h.panic(); h.start(); h.enter('Private tab-local answer', false);
+    const retained = [...h.storage.entries()];
+    const session = h.context.currentGuardSession;
+    h.storageEvent(key); assertQuestionnaireCleared(h);
+    h.restore(); h.timer(0); assertQuestionnaireCleared(h);
+    h.elements['assistant-next-btn'].click();
+    assert.equal(h.context.currentGuardSession, session, 'UI isolation must not change authentication');
+    assert.deepEqual([...h.storage.entries()], retained);
+    assert.equal(h.calls.filter(call => call.body.incidentAnswers).length, 0);
+  });
+}
+
+test('unrelated localStorage changes do not disturb the active questionnaire', async () => {
+  const h = setup(); await h.panic(); h.start(); h.enter('Pending answer', false);
+  const before = viewSnapshot(h); h.storageEvent('unrelated-preference');
+  assert.equal(viewSnapshot(h), before);
 });

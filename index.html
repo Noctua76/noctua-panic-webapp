@@ -1058,6 +1058,15 @@ body{
 }
 
 let currentGuardSession = null;
+  // Questionnaire state must exist before startup session restoration exposes the app.
+  const incidentFlowQueue = [];
+  let activeIncidentFlow = null;
+  let currentQuestionIndex = 0;
+  let incidentAnswers = {};
+  let questionnaireFlow = null;
+  let incidentQuestionnaireSessionKey = null;
+  let incidentQuestionnaireGeneration = 0;
+  let incidentQuestionnaireStorageInvalidated = false;
 let passwordSetupToken = null;
 
 const loginScreen = document.getElementById("loginScreen");
@@ -1257,6 +1266,8 @@ function formatGuardSiteLabel(guard) {
 
 function showMainApp(sessionData) {
   currentGuardSession = sessionData;
+  incidentQuestionnaireStorageInvalidated = false;
+  setIncidentQuestionnaireSession(sessionData);
 
   if (
   !applyTemporaryAccessState(
@@ -1298,6 +1309,7 @@ if (
 
 function showLoginScreen() {
   currentGuardSession = null;
+  setIncidentQuestionnaireSession(null);
   stopTemporaryAccessExpiryTimer();
 
   if (mainApp) mainApp.classList.add("hidden");
@@ -1306,6 +1318,7 @@ function showLoginScreen() {
 }
 
 function showPasswordSetupScreen(data) {
+  setIncidentQuestionnaireSession(null);
   passwordSetupToken = data.password_setup_token;
   if (guardPassword) guardPassword.value = "";
   if (loginScreen) loginScreen.classList.add("hidden");
@@ -1354,6 +1367,7 @@ function enforceMainAppSession() {
 }
 
 async function logoutGuard() {
+  setIncidentQuestionnaireSession(null);
   try {
     if (currentGuardSession?.guard_session_token) {
   try {
@@ -2001,11 +2015,55 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   }
 
   const INCIDENT_DRAFT_PREFIX = "aegis-incident-questionnaire-v2:";
-  const incidentFlowQueue = [];
-  let activeIncidentFlow = null;
+
+  function setIncidentQuestionnaireSession(sessionData) {
+    const guardId = Number(sessionData?.guard?.id);
+    const sessionId = Number(sessionData?.session?.id);
+    const key = !incidentQuestionnaireStorageInvalidated && !isReadOnlyGuardSession(sessionData) &&
+      Number.isSafeInteger(guardId) && guardId > 0 &&
+      Number.isSafeInteger(sessionId) && sessionId > 0 ? `${guardId}:${sessionId}` : null;
+    if (key !== null && key === incidentQuestionnaireSessionKey) return;
+    incidentQuestionnaireSessionKey = key;
+    incidentQuestionnaireGeneration++;
+    // Detach the old view, retaining every queued/stored draft under its original identity.
+    if (questionnaireFlow?.submitting) {
+      const index = incidentFlowQueue.indexOf(questionnaireFlow);
+      if (index >= 0) incidentFlowQueue[index] = {
+        ...questionnaireFlow, answers: { ...questionnaireFlow.answers }, submitting: false,
+      };
+    }
+    questionnaireFlow = null;
+    activeIncidentFlow = null;
+    incidentAnswers = {};
+    currentQuestionIndex = 0;
+    document.getElementById('incident-assistant')?.classList.add('hidden');
+    for (const id of ['assistant-question', 'assistant-progress']) {
+      const element = document.getElementById(id);
+      if (element) element.textContent = '';
+    }
+    const answer = document.getElementById('assistant-answer');
+    if (answer) { answer.value = ''; answer.disabled = true; }
+    const next = document.getElementById('assistant-next-btn');
+    if (next) next.disabled = true;
+  }
+
+  // A different tab can change the shared auth storage without entering this tab's login UI.
+  window.addEventListener('storage', event => {
+    if (event.storageArea !== localStorage || ![null, SESSION_KEY, 'guard_session_token'].includes(event.key)) return;
+    incidentQuestionnaireStorageInvalidated = true;
+    setIncidentQuestionnaireSession(null);
+  });
+
+  function scheduleIncidentQuestionnaire(flow) {
+    const generation = incidentQuestionnaireGeneration;
+    setTimeout(() => {
+      if (generation === incidentQuestionnaireGeneration && matchesIncidentSession(flow)) startIncidentFlowUI();
+    }, Math.max(0, flow.dueAt - Date.now()));
+  }
 
   function matchesIncidentSession(flow) {
-    return Number(currentGuardSession?.session?.id) === flow.sessionId &&
+    return incidentQuestionnaireSessionKey === `${flow.guardId}:${flow.sessionId}` &&
+      Number(currentGuardSession?.session?.id) === flow.sessionId &&
       Number(currentGuardSession?.guard?.id) === flow.guardId && !isReadOnlyGuardSession();
   }
 
@@ -2019,18 +2077,14 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       return true;
     } catch (error) {
       console.error("Incident draft could not be saved locally:", error);
-      if (statusBadge) statusBadge.textContent = 'Το draft δεν αποθηκεύτηκε στη συσκευή. Μην κλείσεις τη σελίδα πριν την υποβολή.';
+      if (statusBadge && matchesIncidentSession(flow)) statusBadge.textContent = 'Το draft δεν αποθηκεύτηκε στη συσκευή. Μην κλείσεις τη σελίδα πριν την υποβολή.';
       return false;
     }
   }
 
   function restoreIncidentQuestionnaires() {
+    setIncidentQuestionnaireSession(currentGuardSession);
     if (!currentGuardSession || isReadOnlyGuardSession()) return;
-    if (questionnaireFlow && !matchesIncidentSession(questionnaireFlow)) {
-      questionnaireFlow = null;
-      document.getElementById('incident-assistant')?.classList.add('hidden');
-      document.getElementById('assistant-answer').value = '';
-    }
     for (let index = 0; index < localStorage.length; index++) {
       const key = localStorage.key(index);
       if (!key?.startsWith(INCIDENT_DRAFT_PREFIX)) continue;
@@ -2046,10 +2100,10 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
         if (incidentFlowQueue.some(item => incidentDraftKey(item) === key)) continue;
         flow.submitting = false;
         incidentFlowQueue.push(flow);
-        setTimeout(() => startIncidentFlowUI(), Math.max(0, flow.dueAt - Date.now()));
       } catch (error) { console.error("Incident draft could not be restored:", error); }
     }
     incidentFlowQueue.sort((a, b) => a.dueAt - b.dueAt);
+    for (const flow of incidentFlowQueue.filter(matchesIncidentSession)) scheduleIncidentQuestionnaire(flow);
     startIncidentFlowUI();
   }
 
@@ -2069,6 +2123,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     }
 
     renderPendingAlertNotifications();
+    const generation = incidentQuestionnaireGeneration;
     const activatingSession = {
       sessionId: Number(currentGuardSession?.session?.id),
       guardId: Number(currentGuardSession?.guard?.id),
@@ -2077,12 +2132,12 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     try {
       // 1) Ενεργοποίηση κλήσεων / SMS
       const alertResult = await triggerAlert();
-      renderAlertNotifications(alertResult);
+      if (generation === incidentQuestionnaireGeneration && matchesIncidentSession(activatingSession)) renderAlertNotifications(alertResult);
 
       const incidentId = Number(alertResult.incident?.id);
       if (!Number.isSafeInteger(incidentId) || incidentId <= 0) {
         console.error("Alert response is missing its incident identifier");
-        if (statusBadge) statusBadge.textContent = 'Η ειδοποίηση στάλθηκε — δεν είναι διαθέσιμη η καταγραφή απαντήσεων.';
+        if (statusBadge && generation === incidentQuestionnaireGeneration && matchesIncidentSession(activatingSession)) statusBadge.textContent = 'Η ειδοποίηση στάλθηκε — δεν είναι διαθέσιμη η καταγραφή απαντήσεων.';
         return;
       }
       const flow = {
@@ -2092,11 +2147,10 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
         answers: {}, questionIndex: 0, draft: '',
       };
       incidentFlowQueue.push(flow);
-      activeIncidentFlow = flow;
       saveIncidentDraft(flow);
-      setTimeout(() => startIncidentFlowUI(), 15000);
-
-      if (!matchesIncidentSession(flow)) return;
+      if (generation !== incidentQuestionnaireGeneration || !matchesIncidentSession(flow)) return;
+      activeIncidentFlow = flow;
+      scheduleIncidentQuestionnaire(flow);
       // AI is optional: neither its latency nor its result gates the questionnaire.
       const baseMessage =
         "Panic button activated via Aegis Link Web App (Noctua Core). Guard confirmed real incident.";
@@ -2106,6 +2160,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 
     } catch (err) {
       console.error('Σφάλμα κατά την ενεργοποίηση:', err);
+      if (generation !== incidentQuestionnaireGeneration || !matchesIncidentSession(activatingSession)) return;
       renderAlertFailure();
       if (statusBadge) {
         statusBadge.textContent = 'Σφάλμα – απαιτείται έλεγχος';
@@ -2506,11 +2561,8 @@ window.addEventListener("online", () => {
     }
   ];
 
-  let currentQuestionIndex = 0;
-  let incidentAnswers = {};
-  let questionnaireFlow = null;
-
   function startIncidentFlowUI() {
+    setIncidentQuestionnaireSession(currentGuardSession);
     const panel      = document.getElementById('incident-assistant');
     const qEl        = document.getElementById('assistant-question');
     const progressEl = document.getElementById('assistant-progress');
@@ -2532,13 +2584,13 @@ window.addEventListener("online", () => {
   }
 
   document.getElementById('assistant-answer')?.addEventListener('input', event => {
-    if (!questionnaireFlow || questionnaireFlow.submitting) return;
+    if (!questionnaireFlow || !matchesIncidentSession(questionnaireFlow) || questionnaireFlow.submitting) return;
     questionnaireFlow.draft = event.target.value;
     saveIncidentDraft(questionnaireFlow);
   });
 
   document.getElementById('assistant-next-btn')?.addEventListener('click', () => {
-    if (!questionnaireFlow || questionnaireFlow.submitting) return;
+    if (!questionnaireFlow || !matchesIncidentSession(questionnaireFlow) || questionnaireFlow.submitting) return;
     const answerEl = document.getElementById('assistant-answer');
     const qEl      = document.getElementById('assistant-question');
     const progressEl = document.getElementById('assistant-progress');
@@ -2565,6 +2617,7 @@ window.addEventListener("online", () => {
       answerEl.value = '';
     } else {
       const flow = questionnaireFlow;
+      const generation = incidentQuestionnaireGeneration;
       flow.questionIndex = incidentQuestions.length - 1;
       saveIncidentDraft(flow);
       const nextButton = document.getElementById('assistant-next-btn');
@@ -2574,7 +2627,7 @@ window.addEventListener("online", () => {
       progressEl.textContent = 'Αποθήκευση απαντήσεων…';
       sendIncidentDetailsToBackend({ ...incidentAnswers }, flow)
         .then(() => {
-          if (questionnaireFlow !== flow) return;
+          if (generation !== incidentQuestionnaireGeneration || !matchesIncidentSession(flow) || questionnaireFlow !== flow) return;
           progressEl.textContent = 'Οι τρεις απαντήσεις αποθηκεύτηκαν.';
           panel.classList.add('hidden');
           try { localStorage.removeItem(incidentDraftKey(flow)); }
@@ -2587,13 +2640,14 @@ window.addEventListener("online", () => {
         })
         .catch(err => {
           console.error('Σφάλμα κατά την αποστολή incident details:', err);
-          if (questionnaireFlow === flow) {
+          if (generation === incidentQuestionnaireGeneration && matchesIncidentSession(flow) && questionnaireFlow === flow) {
             currentQuestionIndex = incidentQuestions.length - 1;
             progressEl.textContent = err.message || 'Η αποθήκευση απέτυχε. Δοκίμασε ξανά.';
           }
         })
         .finally(() => {
           flow.submitting = false;
+          if (generation !== incidentQuestionnaireGeneration || !matchesIncidentSession(flow)) return;
           if (!questionnaireFlow || questionnaireFlow === flow) {
             nextButton.disabled = false;
             answerEl.disabled = false;
