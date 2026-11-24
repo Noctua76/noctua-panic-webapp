@@ -15,16 +15,19 @@ const expirySource = slice('function expireGuardSession(', 'function expireTempo
 const flowSource = slice('  const INCIDENT_DRAFT_PREFIX =', '  function renderPendingAlertNotifications');
 const alertSource = slice('  async function triggerAlert()', '  // ===== Incident log');
 const sendSource = slice('  async function sendIncidentToBackend(', '  // ===== LIVE CLOCK');
+const resetSource = slice('  function resetWebAppUI()', '  /* =====================================================');
+const timerSource = slice('  function startActiveTimer()', '  // ===== ALERT');
 const questionsSource = slice('  const incidentQuestions =', '  </script>');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
 function setup({ ai = 'ok', submission = 'ok', preview = false, panicFails = false, storage = new Map(), now = 1795500100000 } = {}) {
-  const elements = Object.fromEntries(['incident-assistant','assistant-question','assistant-progress','assistant-answer','assistant-next-btn','mainApp','loginScreen','passwordSetupScreen','guardName','guardSite','gpsStatus','guardPassword','passwordSetupGuard','passwordSetupError','newGuardPassword','confirmGuardPassword'].map(id => {
+  const elements = Object.fromEntries(['incident-assistant','assistant-question','assistant-progress','assistant-answer','assistant-next-btn','mainApp','loginScreen','passwordSetupScreen','guardName','guardSite','gpsStatus','guardPassword','passwordSetupGuard','passwordSetupError','newGuardPassword','confirmGuardPassword','statusCard','statusBadge','timeFromStart','callStatusList','smsStatusList'].map(id => {
     const classes = new Set(['hidden']);
     return [id, { value: '', textContent: '', disabled: false, classList: { add: x => classes.add(x), remove: x => classes.delete(x), contains: x => classes.has(x) }, addEventListener: (event, fn) => { elements[id][event] = fn; } }];
   }));
   const calls = [], timers = [], alerts = [], pending = [], microtasks = [];
-  const renders = [], windowListeners = {};
+  const renders = [], windowListeners = {}, intervals = new Map(), intervalHistory = [];
+  let nextInterval = 1;
   let clock = now, nextIncident = 40;
   class ClockDate extends Date { static now() { return clock; } }
   const localStorage = { get length() { return storage.size; }, key: index => [...storage.keys()][index], getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
@@ -46,9 +49,11 @@ function setup({ ai = 'ok', submission = 'ok', preview = false, panicFails = fal
     window: { history: { replaceState() {} }, addEventListener: (name, fn) => { windowListeners[name] = fn; } },
     queueMicrotask: fn => microtasks.push(fn),
     getGuardAuthHeaders: () => ({ Authorization: 'Bearer test-token', 'Content-Type': 'application/json' }),
-    statusCard: null, statusBadge: { textContent: '' }, startTimestamp: null,
-    startActiveTimer() {}, renderPendingAlertNotifications() {}, renderAlertNotifications() { renders.push('success'); }, renderAlertFailure() { renders.push('failure'); },
-    resetWebAppUI() { resets++; },
+    statusCard: elements.statusCard, statusBadge: elements.statusBadge, startTimestamp: null, activeTimer: null,
+    timeFromStartEl: elements.timeFromStart, callStatusList: elements.callStatusList, smsStatusList: elements.smsStatusList,
+    recordReset: () => { resets++; },
+    setInterval: (fn, delay) => { const id = nextInterval++; intervals.set(id, fn); intervalHistory.push({ id, fn, delay }); return id; },
+    clearInterval: id => intervals.delete(id), renderPendingAlertNotifications() {}, renderAlertNotifications() { renders.push('success'); }, renderAlertFailure() { renders.push('failure'); },
     setTimeout: (fn, delay) => { timers.push({ fn, delay, dueAt: clock + delay }); },
     alert: text => alerts.push(text), console: { log() {}, error() {} },
     fetch: async (url, options) => {
@@ -66,8 +71,10 @@ function setup({ ai = 'ok', submission = 'ok', preview = false, panicFails = fal
           : { status: 'ok', incidentId: body.incidentId, responsesSaved: true, responseCount: 3 } };
     },
   });
-  vm.runInContext(stateSource + sessionUISource + expirySource + 'showMainApp(currentGuardSession);' + flowSource + alertSource + sendSource + questionsSource, context);
+  vm.runInContext(stateSource + sessionUISource + expirySource + resetSource + timerSource + 'showMainApp(currentGuardSession);' + flowSource + alertSource + sendSource + questionsSource + 'const actualReset = resetWebAppUI; resetWebAppUI = () => { recordReset(); actualReset(); };', context);
   return { elements, calls, timers, alerts, context, storage, pending, renders,
+    intervalCount: () => intervals.size, oldInterval: index => intervalHistory[index].fn(),
+    advance: ms => { clock += ms; for (const fn of intervals.values()) fn(); },
     storageEvent: key => windowListeners.storage({ key, storageArea: localStorage }),
     show: session => { context.nextSession = session; vm.runInContext('showMainApp(nextSession)', context); },
     logout: () => vm.runInContext('logoutGuard()', context),
@@ -465,4 +472,87 @@ test('unrelated localStorage changes do not disturb the active questionnaire', a
   const h = setup(); await h.panic(); h.start(); h.enter('Pending answer', false);
   const before = viewSnapshot(h); h.storageEvent('unrelated-preference');
   assert.equal(viewSnapshot(h), before);
+});
+
+for (const identity of [{ guard: { id: 2 }, session: { id: 254 } }, { guard: { id: 1 }, session: { id: 254 } }]) {
+  test(`retained session 253 draft cannot prevent session ${identity.session.id}/guard ${identity.guard.id} from completing/resetting`, async () => {
+    const h = setup(); await h.panic(); h.start(); h.enter('Guard A private answer', false);
+    h.advance(5000);
+    h.elements.callStatusList.textContent = 'Guard A call'; h.elements.smsStatusList.textContent = 'Guard A SMS';
+    const [oldKey, oldDraft] = [...h.storage.entries()][0];
+    assert.equal(h.intervalCount(), 1);
+    h.show(identity);
+    assert.equal(h.elements.statusCard.classList.contains('hidden'), true);
+    assert.equal(h.elements.timeFromStart.textContent, '00:00');
+    assert.equal(h.elements.callStatusList.textContent, ''); assert.equal(h.elements.smsStatusList.textContent, '');
+    assert.equal(h.intervalCount(), 0);
+    await h.panic(); h.timer(1); h.advance(2000);
+    const beforeCompletion = h.resets();
+    assert.equal(h.elements.statusCard.classList.contains('hidden'), false);
+    await h.answerAll();
+    assert.equal(h.resets(), beforeCompletion + 1);
+    assert.equal(h.elements.statusCard.classList.contains('hidden'), true);
+    assert.equal(h.elements.statusBadge.textContent, 'Live ενημέρωση');
+    assert.equal(h.elements.timeFromStart.textContent, '00:00');
+    assert.equal(h.context.startTimestamp, null); assert.equal(h.context.activeTimer, null);
+    assert.equal(h.intervalCount(), 0);
+    assert.equal(vm.runInContext('activeIncidentFlow', h.context), null);
+    assert.equal(vm.runInContext('incidentFlowQueue.length', h.context), 1);
+    assert.equal(h.storage.get(oldKey), oldDraft);
+    assert.equal(h.storage.size, 1);
+    const before = viewSnapshot(h); h.oldInterval(0); h.oldInterval(1);
+    assert.equal(viewSnapshot(h), before, 'already-queued elapsed callbacks must not revive old status');
+  });
+}
+
+test('foreign drafts do not affect selection/reset while two current-session questionnaires remain queued', async () => {
+  const h = setup(); await h.panic(); h.start(); h.enter('Retained Guard A evidence', false);
+  const [oldKey, oldDraft] = [...h.storage.entries()][0];
+  h.show({ guard: { id: 2 }, session: { id: 254 } });
+  await h.panic(); await h.panic(); h.timer(1); h.timer(2);
+  assert.equal(h.intervalCount(), 1, 'consecutive panic UI timers must not leave orphan intervals');
+  const baseline = h.resets();
+  await h.answerAll();
+  assert.equal(h.resets(), baseline);
+  assert.equal(vm.runInContext('activeIncidentFlow.incidentId', h.context), 42);
+  assert.equal(vm.runInContext('activeIncidentFlow.sessionId', h.context), 254);
+  assert.equal(vm.runInContext('questionnaireFlow.incidentId', h.context), 42);
+  assert.equal(h.elements.statusCard.classList.contains('hidden'), false);
+  assert.equal(h.intervalCount(), 1);
+  await h.answerAll();
+  assert.equal(h.resets(), baseline + 1);
+  assert.equal(vm.runInContext('activeIncidentFlow', h.context), null);
+  assert.equal(h.elements.statusCard.classList.contains('hidden'), true);
+  assert.equal(h.intervalCount(), 0);
+  assert.equal(h.storage.get(oldKey), oldDraft); assert.equal(h.storage.size, 1);
+});
+
+for (const transition of ['logout', 'expiry', 'Preview', 'account change']) {
+  test(`${transition} clears prior Alert Status, dispatch labels and elapsed timer`, async () => {
+    const h = setup(); await h.panic(); h.start(); h.advance(3000);
+    h.elements.callStatusList.textContent = 'Previous guard call'; h.elements.smsStatusList.textContent = 'Previous guard SMS';
+    const retained = [...h.storage.entries()];
+    if (transition === 'logout') await h.logout();
+    else if (transition === 'expiry') h.expire();
+    else h.show({ guard: { id: 2, access_mode: transition === 'Preview' ? 'read_only' : 'standard' }, session: { id: 254 } });
+    assert.equal(h.elements.statusCard.classList.contains('hidden'), true);
+    assert.equal(h.elements.timeFromStart.textContent, '00:00');
+    assert.equal(h.elements.statusBadge.textContent, 'Live ενημέρωση');
+    assert.equal(h.elements.callStatusList.textContent, ''); assert.equal(h.elements.smsStatusList.textContent, '');
+    assert.equal(h.intervalCount(), 0);
+    assert.equal(h.context.startTimestamp, null);
+    assert.deepEqual([...h.storage.entries()], retained);
+    const before = viewSnapshot(h); h.oldInterval(0); assert.equal(viewSnapshot(h), before);
+  });
+}
+
+test('Alert Status DOM refs and timer state initialize before startup session reset', () => {
+  const startup = source.indexOf('const savedGuardSession = loadSavedGuardSession();');
+  for (const declaration of ['const statusCard', 'const callStatusList', 'let activeTimer', 'let startTimestamp']) {
+    assert.ok(source.indexOf(declaration) < startup, declaration);
+  }
+  const h = setup();
+  assert.equal(h.elements.statusCard.classList.contains('hidden'), true);
+  assert.equal(h.elements.timeFromStart.textContent, '00:00');
+  assert.equal(h.intervalCount(), 0);
 });

@@ -1917,14 +1917,6 @@ if (guardPassword && guardPasswordToggle) {
   });
 }
 
-const savedGuardSession = loadSavedGuardSession();
-
-if (savedGuardSession?.guard && savedGuardSession?.session) {
-  showMainApp(savedGuardSession);
-} else {
-  showLoginScreen();
-}
-
   // Helper για γρήγορο query
   const $ = (s) => document.querySelector(s);
 
@@ -1943,6 +1935,14 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   let activeTimer       = null;
   let startTimestamp    = null;
   let autoCancelTimeout = null;
+
+const savedGuardSession = loadSavedGuardSession();
+
+if (savedGuardSession?.guard && savedGuardSession?.session) {
+  showMainApp(savedGuardSession);
+} else {
+  showLoginScreen();
+}
 
   // ===== 1. Πάτημα ALERT → ανοίγει modal =====
   if (alertBtn) {
@@ -2025,6 +2025,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     if (key !== null && key === incidentQuestionnaireSessionKey) return;
     incidentQuestionnaireSessionKey = key;
     incidentQuestionnaireGeneration++;
+    resetWebAppUI();
     // Detach the old view, retaining every queued/stored draft under its original identity.
     if (questionnaireFlow?.submitting) {
       const index = incidentFlowQueue.indexOf(questionnaireFlow);
@@ -2248,9 +2249,11 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 
   function startActiveTimer() {
     if (!timeFromStartEl) return;
+    if (activeTimer) clearInterval(activeTimer);
+    const generation = incidentQuestionnaireGeneration;
 
     activeTimer = setInterval(() => {
-      if (!startTimestamp) return;
+      if (generation !== incidentQuestionnaireGeneration || !startTimestamp) return;
       const diffMs   = Date.now() - startTimestamp;
       const totalSec = Math.floor(diffMs / 1000);
       const mm       = String(Math.floor(totalSec / 60)).padStart(2, '0');
@@ -2532,6 +2535,8 @@ window.addEventListener("online", () => {
       activeTimer = null;
     }
     startTimestamp = null;
+    if (callStatusList) callStatusList.textContent = '';
+    if (smsStatusList) smsStatusList.textContent = '';
 
     if (timeFromStartEl) {
       timeFromStartEl.textContent = '00:00';
@@ -2634,8 +2639,9 @@ window.addEventListener("online", () => {
           catch (error) { console.error('Saved questionnaire draft could not be removed:', error); }
           incidentFlowQueue.splice(incidentFlowQueue.indexOf(flow), 1);
           questionnaireFlow = null;
-          activeIncidentFlow = incidentFlowQueue[incidentFlowQueue.length - 1] || null;
-          if (!incidentFlowQueue.length) resetWebAppUI();
+          const sessionFlows = incidentFlowQueue.filter(matchesIncidentSession);
+          activeIncidentFlow = sessionFlows[sessionFlows.length - 1] || null;
+          if (!sessionFlows.length) resetWebAppUI();
           alert('Η καταγραφή του συμβάντος ολοκληρώθηκε.');
         })
         .catch(err => {
