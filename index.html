@@ -1999,6 +1999,8 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     }
   }
 
+  let activeIncidentFlow = null;
+
   async function handleAlertConfirmed() {
     if (isReadOnlyGuardSession()) {
   return;
@@ -2021,10 +2023,31 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       const alertResult = await triggerAlert();
       renderAlertNotifications(alertResult);
 
-      // 2) Αποστολή incident log στο backend για AI καταγραφή
+      const incidentId = Number(alertResult.incident?.id);
+      if (!Number.isSafeInteger(incidentId) || incidentId <= 0) {
+        console.error("Alert response is missing its incident identifier");
+        if (statusBadge) statusBadge.textContent = 'Η ειδοποίηση στάλθηκε — δεν είναι διαθέσιμη η καταγραφή απαντήσεων.';
+        return;
+      }
+      const flow = {
+        incidentId,
+        sessionId: currentGuardSession?.session?.id,
+        guardId: currentGuardSession?.guard?.id,
+      };
+      activeIncidentFlow = flow;
+      setTimeout(() => {
+        if (activeIncidentFlow === flow &&
+            currentGuardSession?.session?.id === flow.sessionId &&
+            currentGuardSession?.guard?.id === flow.guardId &&
+            !isReadOnlyGuardSession()) startIncidentFlowUI();
+      }, 15000);
+
+      // AI is optional: neither its latency nor its result gates the questionnaire.
       const baseMessage =
         "Panic button activated via Aegis Link Web App (Noctua Core). Guard confirmed real incident.";
-      await sendIncidentToBackend(baseMessage);
+      void sendIncidentToBackend(baseMessage).catch(error => {
+        console.error("Optional incident summary failed:", error);
+      });
 
     } catch (err) {
       console.error('Σφάλμα κατά την ενεργοποίηση:', err);
@@ -2034,10 +2057,6 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       }
     }
 
-    // 👉 Incident UI flow
-    setTimeout(() => {
-      startIncidentFlowUI();
-    }, 15000); // 15" για δοκιμή – μετά 300000 (5 λεπτά)
   }
 
   function renderPendingAlertNotifications() {
@@ -2196,23 +2215,26 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       const data = await response.json();
       console.log("Incident-log response:", data);
 
-      if (data.assistantLog) {
-        alert("AI incident summary:\n\n" + data.assistantLog);
-      }
+      // Summary results are informational; never display a blocking browser dialog.
     } catch (err) {
       console.error("Error sending incident log:", err);
     }
   }
 
   // ===== Detailed incident log προς backend (3 answers) =====
-  async function sendIncidentDetailsToBackend(answers) {
+  async function sendIncidentDetailsToBackend(answers, flow = activeIncidentFlow) {
     if (isReadOnlyGuardSession()) {
-  return;
+  throw new Error("Η πρόσβαση είναι μόνο για προβολή. Οι απαντήσεις δεν αποθηκεύτηκαν.");
 }
+    if (!flow || flow.sessionId !== currentGuardSession?.session?.id ||
+        flow.guardId !== currentGuardSession?.guard?.id) {
+      throw new Error("Η συνεδρία άλλαξε. Οι απαντήσεις δεν αποθηκεύτηκαν.");
+    }
     const endpoint = `${BACKEND_BASE}/incident-log`;
 
     const payload = {
-  sessionId: currentGuardSession?.session?.id,
+  sessionId: flow.sessionId,
+  incidentId: flow.incidentId,
   timestamp: new Date().toISOString(),
   incidentAnswers: answers,
   message: `
@@ -2231,16 +2253,16 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
     });
 
     if (!response.ok) {
-      console.error("Detailed incident-log request failed with status", response.status);
-      return;
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Η αποθήκευση απέτυχε (${errorData.code || response.status}). Οι απαντήσεις διατηρούνται για επανάληψη.`);
     }
 
     const data = await response.json();
-    console.log("Detailed incident-log response:", data);
-
-    if (data.assistantLog) {
-      console.log("AI incident summary:", data.assistantLog);
+    if (data.status !== "ok" || data.responsesSaved !== true ||
+        data.responseCount !== 3 || Number(data.incidentId) !== flow.incidentId) {
+      throw new Error("Δεν επιβεβαιώθηκε η αποθήκευση των τριών απαντήσεων. Δοκίμασε ξανά.");
     }
+    return data;
   }
 
   // ===== LIVE CLOCK (Header) =====
@@ -2429,6 +2451,7 @@ window.addEventListener("online", () => {
 
   let currentQuestionIndex = 0;
   let incidentAnswers = {};
+  let questionnaireFlow = null;
 
   function startIncidentFlowUI() {
     const panel      = document.getElementById('incident-assistant');
@@ -2436,6 +2459,7 @@ window.addEventListener("online", () => {
     const progressEl = document.getElementById('assistant-progress');
     const answerEl   = document.getElementById('assistant-answer');
 
+    questionnaireFlow = activeIncidentFlow;
     incidentAnswers = {};
     currentQuestionIndex = 0;
 
@@ -2446,7 +2470,9 @@ window.addEventListener("online", () => {
     panel.classList.remove('hidden');
   }
 
+  let incidentSubmissionPending = false;
   document.getElementById('assistant-next-btn')?.addEventListener('click', () => {
+    if (incidentSubmissionPending) return;
     const answerEl = document.getElementById('assistant-answer');
     const qEl      = document.getElementById('assistant-question');
     const progressEl = document.getElementById('assistant-progress');
@@ -2468,16 +2494,33 @@ window.addEventListener("online", () => {
       progressEl.textContent = `Ερώτηση ${currentQuestionIndex+1} από ${incidentQuestions.length}`;
       answerEl.value = '';
     } else {
-      console.log('Incident answers:', incidentAnswers);
-
-      sendIncidentDetailsToBackend(incidentAnswers)
+      const flow = questionnaireFlow;
+      const nextButton = document.getElementById('assistant-next-btn');
+      incidentSubmissionPending = true;
+      nextButton.disabled = true;
+      progressEl.textContent = 'Αποθήκευση απαντήσεων…';
+      sendIncidentDetailsToBackend({ ...incidentAnswers }, flow)
+        .then(() => {
+          if (questionnaireFlow !== flow) return;
+          progressEl.textContent = 'Οι τρεις απαντήσεις αποθηκεύτηκαν.';
+          panel.classList.add('hidden');
+          questionnaireFlow = null;
+          if (activeIncidentFlow === flow) {
+            activeIncidentFlow = null;
+            resetWebAppUI();
+          }
+          alert('Η καταγραφή του συμβάντος ολοκληρώθηκε.');
+        })
         .catch(err => {
           console.error('Σφάλμα κατά την αποστολή incident details:', err);
+          if (questionnaireFlow === flow) {
+            currentQuestionIndex = incidentQuestions.length - 1;
+            progressEl.textContent = err.message || 'Η αποθήκευση απέτυχε. Δοκίμασε ξανά.';
+          }
         })
         .finally(() => {
-          alert('Η καταγραφή του συμβάντος ολοκληρώθηκε.');
-          panel.classList.add('hidden');
-          resetWebAppUI();
+          incidentSubmissionPending = false;
+          nextButton.disabled = false;
         });
     }
   });
