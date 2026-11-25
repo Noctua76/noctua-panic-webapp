@@ -18,6 +18,7 @@ concurrency:
 
 jobs:
   deploy:
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -90,6 +91,37 @@ jobs:
           echo "AEGIS_STOP: PAGES_ARTIFACT_METADATA_DEADLINE"
           exit 1
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy verified Pages artifact through official REST API
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let stage = 'ARTIFACT';
+            try {
+              const common = {owner: context.repo.owner, repo: context.repo.repo, request: {timeout: 10000}};
+              const result = await github.request('GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts', {...common, run_id: context.runId, per_page: 100});
+              const artifacts = result.data.artifacts.filter(a => a.name === 'github-pages' && !a.expired);
+              if (artifacts.length !== 1 || !artifacts[0].size_in_bytes || artifacts[0].workflow_run?.head_sha !== context.sha) throw new Error('ARTIFACT_IDENTITY');
+              stage = 'OIDC';
+              const idToken = await core.getIDToken();
+              core.setSecret(idToken);
+              stage = 'CREATE';
+              const created = await github.request('POST /repos/{owner}/{repo}/pages/deployments', {...common, artifact_id: artifacts[0].id, pages_build_version: context.sha, oidc_token: idToken});
+              const deployment = created.data;
+              core.setOutput('deployment_id', deployment.id);
+              stage = 'STATUS';
+              const deadline = Date.now() + 120000;
+              while (Date.now() < deadline) {
+                const response = await github.request('GET /repos/{owner}/{repo}/pages/deployments/{deployment_id}', {...common, deployment_id: deployment.id});
+                if (response.data.status === 'succeed') {
+                  core.setOutput('page_url', deployment.page_url);
+                  core.info('PAGES_DEPLOYMENT_SUCCEEDED');
+                  return;
+                }
+                if (['failed','cancelled','errored','deployment_failed'].includes(response.data.status)) throw new Error('DEPLOYMENT_REJECTED');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+              throw new Error('STATUS_DEADLINE');
+            } catch {
+              core.setFailed('AEGIS_PAGES_' + stage + '_FAILED');
+            }
