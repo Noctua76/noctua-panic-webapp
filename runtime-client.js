@@ -104,12 +104,7 @@ const deviceMetadata =
     await BrowserDetector.getDeviceMetadata();
 
         
-console.log("[Aegis Runtime] Report started", {
-    tokenAvailable: Boolean(token),
-    standalone: isStandalone(),
-    state: InstallationManager.getState(),
-    runtimeVersion
-});
+console.log("[Aegis Runtime] Report started");
 
 if (!token) {
     console.error(
@@ -183,7 +178,7 @@ if (!token) {
             );
         }
 
-        console.log("PWA Runtime registered:", data);
+        console.log("PWA Runtime registered:");
 
         return data;
 

@@ -17,7 +17,7 @@ async function registerServiceWorker() {
 
     return serviceWorkerRegistration;
   } catch (err) {
-    console.error("Service Worker registration failed:", err);
+    console.error("Service Worker registration failed:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
     return null;
   }
 }
@@ -132,7 +132,7 @@ async function sendSubscriptionToBackend(subscription, guardSession) {
     const data = await response.json();
 
     if (!response.ok || data.status !== "ok") {
-      console.error("Push subscription backend save failed:", data);
+      console.error("Push subscription backend save failed:");
       return false;
     }
 
@@ -140,7 +140,7 @@ async function sendSubscriptionToBackend(subscription, guardSession) {
 
     return true;
   } catch (err) {
-    console.error("Failed sending push subscription to backend:", err);
+    console.error("Failed sending push subscription to backend:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
     return false;
   }
 }
@@ -185,14 +185,14 @@ export async function unsubscribePushNotifications() {
         console.warn("Push subscription backend deactivation failed.");
       }
     } catch (err) {
-      console.warn("Unable to deactivate push subscription in backend:", err);
+      console.warn("Unable to deactivate push subscription in backend:");
     }
   }
 
   try {
     return await subscription.unsubscribe();
   } catch (err) {
-    console.warn("Browser push unsubscribe failed:", err);
+    console.warn("Browser push unsubscribe failed:");
     return false;
   }
 }
