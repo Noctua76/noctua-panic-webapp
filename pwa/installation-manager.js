@@ -116,7 +116,7 @@ async function promptInstall() {
 
     const { outcome } = await deferredPrompt.userChoice;
 
-    console.log("Install choice:", outcome);
+    console.log("Install choice:");
 
     deferredPrompt = null;
 
@@ -133,7 +133,7 @@ function initialize() {
 
     determineState();
 
-    console.log("PWA State:", getState());
+    console.log("PWA State:");
 
     switch (getState()) {
 

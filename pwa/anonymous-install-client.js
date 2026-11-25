@@ -175,10 +175,7 @@ const AnonymousInstallClient = (() => {
 
             pendingReports.delete(confirmationMethod);
 
-            console.log(
-                "[Aegis Runtime] Anonymous installation registered:",
-                confirmationMethod
-            );
+            console.log("[Aegis Runtime] Anonymous installation registered:");
 
             return data;
 
@@ -186,10 +183,7 @@ const AnonymousInstallClient = (() => {
 
             pendingReports.add(confirmationMethod);
 
-            console.warn(
-                "[Aegis Runtime] Anonymous installation registration deferred:",
-                error
-            );
+            console.warn("[Aegis Runtime] Anonymous installation registration deferred:");
 
             return null;
 

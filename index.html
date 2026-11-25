@@ -1044,7 +1044,9 @@ body{
   </div>
 
   <script src="config.js"></script>
-  <script>
+  <script src="questionnaire/secure-engine.js?v=__BUILD_VERSION__"></script>
+<script src="questionnaire/guard-ui.js?v=__BUILD_VERSION__"></script>
+<script>
   // 🔹 Global βάση για όλα τα calls προς backend
   const BACKEND_BASE = window.AEGIS_CONFIG.backendBase;
   const SESSION_KEY = "aegis_guard_session";
@@ -1067,6 +1069,17 @@ let currentGuardSession = null;
   let incidentQuestionnaireSessionKey = null;
   let incidentQuestionnaireGeneration = 0;
   let incidentQuestionnaireStorageInvalidated = false;
+  let secureQuestionnaireController = null;
+  let pendingAlertRequests = 0;
+  const pendingAlertWaiters = [];
+  if (window.AegisQuestionnaireEngine && window.createSecureQuestionnaireUI) {
+    secureQuestionnaireController = window.createSecureQuestionnaireUI({
+      baseUrl: BACKEND_BASE,
+      getHeaders: () => getGuardAuthHeaders(),
+      onComplete: () => { if (!incidentFlowQueue.some(matchesIncidentSession)) resetWebAppUI(); },
+    });
+  }
+
 let passwordSetupToken = null;
 
 const loginScreen = document.getElementById("loginScreen");
@@ -1374,7 +1387,7 @@ async function logoutGuard() {
     const { unsubscribePushNotifications } = await import("./push.js?v=20260909-1");
     await unsubscribePushNotifications();
   } catch (err) {
-    console.error("Guard push unsubscribe error:", err);
+    console.error("Guard push unsubscribe error:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
   }
 
   await fetch(`${BACKEND_BASE}/guard/logout`, {
@@ -1384,7 +1397,7 @@ async function logoutGuard() {
   });
 }
   } catch (err) {
-    console.error("Guard logout backend error:", err);
+    console.error("Guard logout backend error:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
   } finally {
     clearGuardSessionStorage();
 
@@ -1447,22 +1460,10 @@ async function sendGuardLocation(position) {
   if (gpsStatusEl) {
   gpsStatusEl.textContent = `Sending ${coords.accuracy.toFixed(0)}m`;
 }
-  console.log("GPS position received:", {
-  latitude: coords.latitude,
-  longitude: coords.longitude,
-  accuracy: coords.accuracy,
-  guard_id: currentGuardSession?.guard?.id
-});
+  console.log("GPS position received:");
 
   try {
-    console.log("GPS PAYLOAD", {
-  guard_id: currentGuardSession?.guard?.id,
-  session_id: currentGuardSession?.session?.id,
-  latitude: coords.latitude,
-  longitude: coords.longitude,
-  accuracy: coords.accuracy,
-  speed: coords.speed
-});
+    console.log("GPS PAYLOAD");
 let batteryLevel = null;
 
 try {
@@ -1471,7 +1472,7 @@ try {
     batteryLevel = Math.round(batteryInfo.level * 100);
   }
 } catch (batteryErr) {
-  console.warn("Battery status not available:", batteryErr);
+  console.warn("Battery status not available:");
 }
 latestGuardLocation = {
   latitude: coords.latitude,
@@ -1493,7 +1494,7 @@ latestGuardLocation = {
 });
 
 const data = await response.json();
-console.log("GPS RESPONSE", response.status, data);
+console.log("GPS RESPONSE");
 
 if (
   response.status === 401 ||
@@ -1511,7 +1512,7 @@ if (
 }
 
 if (!response.ok || data.status !== "ok") {
-  console.error("GPS backend rejected:", data);
+  console.error("GPS backend rejected:");
 
   if (gpsStatusEl) {
     gpsStatusEl.textContent = `Rejected ${response.status}`;
@@ -1527,7 +1528,7 @@ if (gpsStatusEl) {
     if (gpsStatusEl) {
   gpsStatusEl.textContent = "Send failed";
 }
-    console.error("Guard location update failed:", err);
+    console.error("Guard location update failed:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
   }
 }
 
@@ -1563,10 +1564,7 @@ function refreshGuardLocationNow() {
         clearGuardLocationPendingState();
         setGuardGpsStatus(guardLocationErrorStatus(err));
       }
-      console.error("Immediate guard location error:", {
-        code: err.code,
-        message: err.message
-      });
+      console.error("Immediate guard location error:");
     },
     {
       enableHighAccuracy: true,
@@ -1597,10 +1595,7 @@ function restartGuardLocationWatcher() {
         return;
       }
       setGuardGpsStatus(guardLocationErrorStatus(err));
-      console.error("Guard location permission/error:", {
-        code: err.code,
-        message: err.message
-      });
+      console.error("Guard location permission/error:");
     },
     {
       enableHighAccuracy: true,
@@ -1726,13 +1721,10 @@ if (
 }
 
 if (!response.ok) {
-  console.error(
-    "Guard heartbeat rejected:",
-    response.status
-  );
+  console.error("Guard heartbeat rejected:");
 }
   } catch (err) {
-    console.error("Guard heartbeat failed:", err);
+    console.error("Guard heartbeat failed:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
   }
 }
 
@@ -1803,7 +1795,7 @@ RuntimeClient.report(BACKEND_BASE, {
     source: "guard_login"
   }
 }).catch((error) => {
-  console.error("Runtime registration failed:", error);
+  console.error("Runtime registration failed:", {code: /^[0-9A-Z]{5}$/.test(error?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(error?.code) ? error.code : 'INTERNAL'});
 });
     showMainApp(data);
 
@@ -1813,12 +1805,12 @@ RuntimeClient.report(BACKEND_BASE, {
           initializePushNotifications(data)
         )
         .catch((error) => {
-          console.error("Push initialization failed:", error);
+          console.error("Push initialization failed:", {code: /^[0-9A-Z]{5}$/.test(error?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(error?.code) ? error.code : 'INTERNAL'});
         });
     }
 
   } catch (err) {
-    console.error("Guard login failed:", err);
+    console.error("Guard login failed:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
     if (loginError) {
       loginError.textContent = err.message || "Login failed.";
 }
@@ -2017,6 +2009,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   const INCIDENT_DRAFT_PREFIX = "aegis-incident-questionnaire-v2:";
 
   function setIncidentQuestionnaireSession(sessionData) {
+    secureQuestionnaireController?.setSession(incidentQuestionnaireStorageInvalidated ? null : sessionData);
     const guardId = Number(sessionData?.guard?.id);
     const sessionId = Number(sessionData?.session?.id);
     const key = !incidentQuestionnaireStorageInvalidated && !isReadOnlyGuardSession(sessionData) &&
@@ -2073,45 +2066,53 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
   }
 
   function saveIncidentDraft(flow) {
-    try {
-      localStorage.setItem(incidentDraftKey(flow), JSON.stringify({ ...flow, submitting: false }));
-      return true;
-    } catch (error) {
-      console.error("Incident draft could not be saved locally:", error);
-      if (statusBadge && matchesIncidentSession(flow)) statusBadge.textContent = 'Το draft δεν αποθηκεύτηκε στη συσκευή. Μην κλείσεις τη σελίδα πριν την υποβολή.';
+    const failed = () => {
+      if (statusBadge && matchesIncidentSession(flow)) statusBadge.textContent = 'Το draft δεν αποθηκεύτηκε με ασφάλεια. Μην κλείσεις τη σελίδα πριν από επιβεβαιωμένη υποβολή.';
       return false;
-    }
+    };
+    if (!secureQuestionnaireController) return failed();
+    try {
+      const result = secureQuestionnaireController.captureLegacy(flow);
+      if (result?.then) void result.catch(failed);
+      return true;
+    } catch { return failed(); }
   }
 
   function restoreIncidentQuestionnaires() {
     setIncidentQuestionnaireSession(currentGuardSession);
     if (!currentGuardSession || isReadOnlyGuardSession()) return;
-    for (let index = 0; index < localStorage.length; index++) {
-      const key = localStorage.key(index);
-      if (!key?.startsWith(INCIDENT_DRAFT_PREFIX)) continue;
-      try {
-        const flow = JSON.parse(localStorage.getItem(key));
-        if (!Number.isSafeInteger(flow?.incidentId) || flow.incidentId <= 0 ||
-            !Number.isSafeInteger(flow?.sessionId) || !Number.isSafeInteger(flow?.guardId) ||
-            !Number.isFinite(flow?.dueAt) || !Number.isInteger(flow?.questionIndex) ||
-            flow.questionIndex < 0 || flow.questionIndex >= incidentQuestions.length ||
-            !flow.answers || typeof flow.answers !== 'object' || Array.isArray(flow.answers) ||
-            typeof flow.draft !== 'string' || key !== incidentDraftKey(flow) ||
-            !matchesIncidentSession(flow)) continue;
-        if (incidentFlowQueue.some(item => incidentDraftKey(item) === key)) continue;
-        flow.submitting = false;
-        incidentFlowQueue.push(flow);
-      } catch (error) { console.error("Incident draft could not be restored:", error); }
+    const generation = incidentQuestionnaireGeneration;
+    if (!secureQuestionnaireController) {
+      if (statusBadge) statusBadge.textContent = 'Η ασφαλής ανάκτηση drafts δεν είναι διαθέσιμη. Τα υπάρχοντα στοιχεία παραμένουν ανέπαφα.';
+      return;
     }
-    incidentFlowQueue.sort((a, b) => a.dueAt - b.dueAt);
-    for (const flow of incidentFlowQueue.filter(matchesIncidentSession)) scheduleIncidentQuestionnaire(flow);
-    startIncidentFlowUI();
+    const applyRecovered = flows => {
+      if (generation !== incidentQuestionnaireGeneration) return;
+      for (const flow of flows) {
+        if (!matchesIncidentSession(flow) || incidentFlowQueue.some(item => incidentDraftKey(item) === incidentDraftKey(flow))) continue;
+        incidentFlowQueue.push(flow);
+      }
+      incidentFlowQueue.sort((a,b)=>a.dueAt-b.dueAt);
+      for (const flow of incidentFlowQueue.filter(matchesIncidentSession)) scheduleIncidentQuestionnaire(flow);
+      startIncidentFlowUI();
+    };
+    try {
+      const recovered = secureQuestionnaireController.restoreLegacy();
+      if (recovered?.then) {
+        void recovered.then(applyRecovered).catch(() => {
+          if (generation === incidentQuestionnaireGeneration && statusBadge) statusBadge.textContent = 'Η ανάκτηση απαιτεί online επαλήθευση. Κανένα παλιό draft δεν διαγράφηκε.';
+        });
+      } else applyRecovered(recovered);
+    } catch { if (statusBadge) statusBadge.textContent = 'Η ασφαλής ανάκτηση απαιτεί έλεγχο.'; }
+    return;
   }
 
   async function handleAlertConfirmed() {
     if (isReadOnlyGuardSession()) {
   return;
 }
+    pendingAlertRequests++;
+    try {
     if (statusCard) {
       statusCard.classList.remove('hidden');
     }
@@ -2141,6 +2142,11 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
         if (statusBadge && generation === incidentQuestionnaireGeneration && matchesIncidentSession(activatingSession)) statusBadge.textContent = 'Η ειδοποίηση στάλθηκε — δεν είναι διαθέσιμη η καταγραφή απαντήσεων.';
         return;
       }
+      if (alertResult.incident?.questionnaire_binding?.contractVersion === 2) {
+        if (secureQuestionnaireController) secureQuestionnaireController.queue(alertResult.incident);
+        else if (statusBadge && generation === incidentQuestionnaireGeneration) statusBadge.textContent = 'Το alert δημιουργήθηκε. Απαιτείται επαναφόρτωση για ασφαλή ανάκτηση του ερωτηματολογίου.';
+        return;
+      }
       const flow = {
         incidentId,
         ...activatingSession,
@@ -2156,11 +2162,11 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       const baseMessage =
         "Panic button activated via Aegis Link Web App (Noctua Core). Guard confirmed real incident.";
       void sendIncidentToBackend(baseMessage).catch(error => {
-        console.error("Optional incident summary failed:", error);
+        console.error("Optional incident summary failed:", {code: /^[0-9A-Z]{5}$/.test(error?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(error?.code) ? error.code : 'INTERNAL'});
       });
 
     } catch (err) {
-      console.error('Σφάλμα κατά την ενεργοποίηση:', err);
+      console.error("Σφάλμα κατά την ενεργοποίηση:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
       if (generation !== incidentQuestionnaireGeneration || !matchesIncidentSession(activatingSession)) return;
       renderAlertFailure();
       if (statusBadge) {
@@ -2168,6 +2174,21 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       }
     }
 
+    } finally {
+      pendingAlertRequests--;
+      if (!pendingAlertRequests) for (const resolve of pendingAlertWaiters.splice(0)) resolve();
+    }
+
+  }
+
+  async function prepareGuardClientTransition() {
+    for (;;) {
+      while (pendingAlertRequests) await new Promise(resolve => pendingAlertWaiters.push(resolve));
+      const generation = incidentQuestionnaireGeneration;
+      if (!secureQuestionnaireController && incidentFlowQueue.some(flow => matchesIncidentSession(flow) && (flow.draft || Object.keys(flow.answers).length))) throw new Error('SECURE_STORAGE_UNAVAILABLE');
+      await secureQuestionnaireController?.flushLocal();
+      if (!pendingAlertRequests && generation === incidentQuestionnaireGeneration) return;
+    }
   }
 
   function renderPendingAlertNotifications() {
@@ -2321,16 +2342,16 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
 });
 
       if (!response.ok) {
-        console.error("Incident-log request failed with status", response.status);
+        console.error("Incident-log request failed with status");
         return;
       }
 
       const data = await response.json();
-      console.log("Incident-log response:", data);
+      // Optional AI output is not logged or forwarded to the questionnaire.
 
       // Summary results are informational; never display a blocking browser dialog.
     } catch (err) {
-      console.error("Error sending incident log:", err);
+      console.error("Error sending incident log:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
     }
   }
 
@@ -2426,7 +2447,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
       }
 
       const data = await res.json();
-      console.log('Health response:', data);
+      console.log("Health response:");
 
       if (data.status === 'ok') {
         setSystemStatus('online');
@@ -2434,7 +2455,7 @@ if (savedGuardSession?.guard && savedGuardSession?.session) {
         setSystemStatus('offline');
       }
     } catch (err) {
-      console.error('Health check failed:', err);
+      console.error("Health check failed:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
       setSystemStatus('offline');
     }
   }
@@ -2589,13 +2610,13 @@ window.addEventListener("online", () => {
   }
 
   document.getElementById('assistant-answer')?.addEventListener('input', event => {
-    if (!questionnaireFlow || !matchesIncidentSession(questionnaireFlow) || questionnaireFlow.submitting) return;
+    if (!questionnaireFlow || !matchesIncidentSession(questionnaireFlow) || questionnaireFlow.submitting || secureQuestionnaireController?.transitioning) return;
     questionnaireFlow.draft = event.target.value;
     saveIncidentDraft(questionnaireFlow);
   });
 
   document.getElementById('assistant-next-btn')?.addEventListener('click', () => {
-    if (!questionnaireFlow || !matchesIncidentSession(questionnaireFlow) || questionnaireFlow.submitting) return;
+    if (!questionnaireFlow || !matchesIncidentSession(questionnaireFlow) || questionnaireFlow.submitting || secureQuestionnaireController?.transitioning) return;
     const answerEl = document.getElementById('assistant-answer');
     const qEl      = document.getElementById('assistant-question');
     const progressEl = document.getElementById('assistant-progress');
@@ -2635,8 +2656,8 @@ window.addEventListener("online", () => {
           if (generation !== incidentQuestionnaireGeneration || !matchesIncidentSession(flow) || questionnaireFlow !== flow) return;
           progressEl.textContent = 'Οι τρεις απαντήσεις αποθηκεύτηκαν.';
           panel.classList.add('hidden');
-          try { localStorage.removeItem(incidentDraftKey(flow)); }
-          catch (error) { console.error('Saved questionnaire draft could not be removed:', error); }
+          void secureQuestionnaireController?.completeLegacy(flow).catch(() => {});
+          // Legacy plaintext is removed only by verified secure migration, never by a blind cleanup.
           incidentFlowQueue.splice(incidentFlowQueue.indexOf(flow), 1);
           questionnaireFlow = null;
           const sessionFlows = incidentFlowQueue.filter(matchesIncidentSession);
@@ -2645,7 +2666,7 @@ window.addEventListener("online", () => {
           alert('Η καταγραφή του συμβάντος ολοκληρώθηκε.');
         })
         .catch(err => {
-          console.error('Σφάλμα κατά την αποστολή incident details:', err);
+          console.error("Σφάλμα κατά την αποστολή incident details:", {code: /^[0-9A-Z]{5}$/.test(err?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(err?.code) ? err.code : 'INTERNAL'});
           if (generation === incidentQuestionnaireGeneration && matchesIncidentSession(flow) && questionnaireFlow === flow) {
             currentQuestionIndex = incidentQuestions.length - 1;
             progressEl.textContent = err.message || 'Η αποθήκευση απέτυχε. Δοκίμασε ξανά.';
@@ -2669,13 +2690,22 @@ if ("serviceWorker" in navigator) {
     const hadController = Boolean(navigator.serviceWorker.controller);
     let reloading = false;
 
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
+    navigator.serviceWorker.addEventListener("controllerchange", async () => {
       if (!hadController || reloading) {
         return;
       }
 
       reloading = true;
-      window.location.reload();
+      try {
+        await prepareGuardClientTransition();
+        window.location.reload();
+      } catch {
+        reloading = false;
+        const notice = document.createElement('p');
+        notice.setAttribute('role','status');
+        notice.textContent = 'Η ενημέρωση περιμένει ασφαλή διατήρηση των drafts. Μην κλείσεις τη σελίδα.';
+        document.getElementById('secure-incident-assistant')?.append(notice);
+      }
     });
 
     try {
@@ -2690,10 +2720,7 @@ if ("serviceWorker" in navigator) {
         try {
           await registration.update();
         } catch (error) {
-          console.error(
-            "[Aegis Link] Service worker update check failed:",
-            error
-          );
+          console.error("[Aegis Link] Service worker update check failed:", {code: /^[0-9A-Z]{5}$/.test(error?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(error?.code) ? error.code : 'INTERNAL'});
         }
       };
 
@@ -2708,10 +2735,7 @@ if ("serviceWorker" in navigator) {
       window.addEventListener("focus", checkForUpdate);
 
     } catch (error) {
-      console.error(
-        "[Aegis Link] Service worker registration failed:",
-        error
-      );
+      console.error("[Aegis Link] Service worker registration failed:", {code: /^[0-9A-Z]{5}$/.test(error?.code || '') || ['ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENOTFOUND'].includes(error?.code) ? error.code : 'INTERNAL'});
     }
   });
 }

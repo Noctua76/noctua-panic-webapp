@@ -71,7 +71,27 @@ function setup({ ai = 'ok', submission = 'ok', preview = false, panicFails = fal
           : { status: 'ok', incidentId: body.incidentId, responsesSaved: true, responseCount: 3 } };
     },
   });
-  vm.runInContext(stateSource + sessionUISource + expirySource + resetSource + timerSource + 'showMainApp(currentGuardSession);' + flowSource + alertSource + sendSource + questionsSource + 'const actualReset = resetWebAppUI; resetWebAppUI = () => { recordReset(); actualReset(); };', context);
+  // Preserve the accepted queue/timer/isolation tests against a synchronous RAM-only
+  // custody adapter. Real persistence/crypto is exercised separately in secure-engine
+  // unit and actual-browser tests; this Map is not browser storage security evidence.
+  context.legacyBridge = {
+    setSession() {},
+    captureLegacy(flow) { localStorage.setItem(`aegis-incident-questionnaire-v2:${flow.sessionId}:${flow.incidentId}`,JSON.stringify({...flow,submitting:false})); },
+    async completeLegacy(flow) { localStorage.removeItem(`aegis-incident-questionnaire-v2:${flow.sessionId}:${flow.incidentId}`); },
+    restoreLegacy() {
+      const flows=[];
+      for (const [key,value] of storage) {
+        if (!key?.startsWith('aegis-incident-questionnaire-v2:')) continue;
+        try {
+          const flow=JSON.parse(value);
+          if (!Number.isSafeInteger(flow?.incidentId)||flow.incidentId<=0||!Number.isSafeInteger(flow?.sessionId)||!Number.isSafeInteger(flow?.guardId)||!Number.isFinite(flow?.dueAt)||!Number.isInteger(flow?.questionIndex)||flow.questionIndex<0||flow.questionIndex>=3||!flow.answers||typeof flow.answers!=='object'||Array.isArray(flow.answers)||typeof flow.draft!=='string'||key!==`aegis-incident-questionnaire-v2:${flow.sessionId}:${flow.incidentId}`) continue;
+          flows.push({...flow,submitting:false});
+        }catch{}
+      }
+      return flows;
+    },
+  };
+  vm.runInContext(stateSource + sessionUISource + expirySource + resetSource + timerSource + 'secureQuestionnaireController = legacyBridge; showMainApp(currentGuardSession);' + flowSource + alertSource + sendSource + questionsSource + 'const actualReset = resetWebAppUI; resetWebAppUI = () => { recordReset(); actualReset(); };', context);
   return { elements, calls, timers, alerts, context, storage, pending, renders,
     intervalCount: () => intervals.size, oldInterval: index => intervalHistory[index].fn(),
     advance: ms => { clock += ms; for (const fn of intervals.values()) fn(); },
@@ -264,14 +284,19 @@ test('another session or guard cannot restore or rebind stored questionnaires', 
 test('existing service worker controllerchange reload preserves a new-client questionnaire draft', async () => {
   const h = setup(); await h.panic(); h.start(); h.enter('Survives SW update', false);
   const swListeners = {}, windowListeners = {};
-  let reloaded = false;
+  let reloaded = false, releaseCheckpoint;
+  const checkpoint = new Promise(resolve => { releaseCheckpoint = resolve; });
   const swSource = slice('if ("serviceWorker" in navigator)', '</script>');
   const context = vm.createContext({
     navigator: { serviceWorker: { controller: {}, addEventListener: (name, fn) => { swListeners[name] = fn; }, register: async () => ({ update: async () => {} }) } },
     window: { addEventListener: (name, fn) => { windowListeners[name] = fn; }, location: { reload: () => { reloaded = true; } } },
     document: { addEventListener() {} }, console: { log() {}, error() {} },
+    prepareGuardClientTransition: () => checkpoint,
   });
-  vm.runInContext(swSource, context); await windowListeners.load(); swListeners.controllerchange();
+  vm.runInContext(swSource, context); await windowListeners.load();
+  const transition = swListeners.controllerchange();
+  assert.equal(reloaded, false, 'reload must wait for the encrypted local transaction');
+  releaseCheckpoint(); await transition;
   assert.equal(reloaded, true);
   const restored = setup({ storage: h.storage, now: h.now() }); restored.restore();
   assert.equal(restored.elements['assistant-answer'].value, 'Survives SW update');
@@ -442,7 +467,7 @@ test('same original session can recover and retry after a detached in-flight req
   assert.equal(attempts[1].body.sessionId, 253);
 });
 
-test('draft retention is origin-local plaintext, never automatically purged or reassigned on logout', async () => {
+test('legacy RAM custody fixture is never automatically purged or reassigned on logout', async () => {
   const h = setup(); await h.panic(); h.start(); h.enter('Sensitive operational answer', false);
   const [key, serialized] = [...h.storage.entries()][0];
   assert.equal(key, 'aegis-incident-questionnaire-v2:253:40');

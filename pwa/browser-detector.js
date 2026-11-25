@@ -220,10 +220,7 @@ async function getDeviceMetadata() {
 
         } catch (error) {
 
-            console.warn(
-                "[Aegis Runtime] Detailed device information unavailable:",
-                error
-            );
+            console.warn("[Aegis Runtime] Detailed device information unavailable:");
 
         }
 
